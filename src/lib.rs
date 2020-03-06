@@ -212,15 +212,6 @@ where
     }
 }
 
-impl<T> From<T> for TaggedBox<T>
-where
-    T: From<TaggedBox<T>>,
-{
-    fn from(value: T) -> TaggedBox<T> {
-        value.into()
-    }
-}
-
 impl<T> Ord for TaggedBox<T>
 where
     T: From<TaggedBox<T>> + Into<TaggedBox<T>> + Ord + Clone,
@@ -239,6 +230,7 @@ macro_rules! tagged_box {
         }
     ) => {
         $( #[$meta] )*
+        #[repr(transparent)]
         $struct_vis struct $struct {
             value: $crate::TaggedBox<$enum>,
         }
@@ -289,13 +281,22 @@ macro_rules! tagged_box {
         )*
 
         impl From<$enum> for $struct {
-            #[allow(unused_assignments)]
             fn from(value: $enum) -> Self {
+                Self{
+                    value: value.into(),
+                }
+            }
+        }
+
+        impl From<$enum> for $crate::TaggedBox<$enum> {
+            #[allow(unused_assignments)]
+            fn from(value: $enum)->Self{
+                
                 let mut discriminant = 0;
 
                 $(
                     if let $enum::$field(value) = value {
-                        return Self::new(value, discriminant);
+                        return $crate::TaggedBox::new(value, discriminant);
                     } else {
                         discriminant += 1;
                     }
@@ -308,7 +309,7 @@ macro_rules! tagged_box {
         impl From<$struct> for $enum {
             fn from(value: $struct) -> Self {
                 let mut this = core::mem::ManuallyDrop::new(value);
-                unsafe { (&mut this as *mut core::mem::ManuallyDrop<$struct> as *mut $struct).read() }.into()
+                unsafe { (&mut this as *mut core::mem::ManuallyDrop<$struct> as *mut $enum).read() }
             }
         }
 
@@ -381,3 +382,14 @@ mod tests {
         );
     }
 }
+
+
+
+
+
+
+
+
+
+
+
