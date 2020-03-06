@@ -2,8 +2,11 @@
 name = "tagged-box"
 version = "0.1.0"
 authors = ["Chase Wilson <contact@chasewilson.dev>"]
+description = "An implementation of Box that uses tagged pointers"
 edition = "2018"
 license = "MIT OR Apache-2.0"
 homepage = "https://github.com/Kixiron/tagged-box"
 repository = "https://github.com/Kixiron/tagged-box"
-description = "An implementation of Box that uses tagged pointers"
+readme = "README.md"
+keywords = ["nanbox", "tagged-pointers", "pointers"]
+categories = ["no-std", "memory"]
