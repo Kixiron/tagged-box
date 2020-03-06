@@ -3,5 +3,7 @@ name = "tagged-box"
 version = "0.1.0"
 authors = ["Chase Wilson <contact@chasewilson.dev>"]
 edition = "2018"
-
-[dependencies]
+license = "MIT OR Apache-2.0"
+homepage = "https://github.com/Kixiron/tagged-box"
+repository = "https://github.com/Kixiron/tagged-box"
+description = "An implementation of Box that uses tagged pointers"
