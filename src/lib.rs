@@ -33,13 +33,13 @@ impl TaggedPointer {
     }
 
     #[inline]
-    pub fn as_ref<T>(&self) -> &T {
-        unsafe { &*(Self::fetch_ptr(self.ptr) as *const T) }
+    pub unsafe fn as_ref<T>(&self) -> &T {
+        &*(Self::fetch_ptr(self.ptr) as *const T)
     }
 
     #[inline]
-    pub fn as_mut_ref<T>(&mut self) -> &mut T {
-        unsafe { &mut *(Self::fetch_ptr(self.ptr) as *mut T) }
+    pub unsafe fn as_mut_ref<T>(&mut self) -> &mut T {
+        &mut *(Self::fetch_ptr(self.ptr) as *mut T)
     }
 
     #[inline]
@@ -108,25 +108,23 @@ impl<T> TaggedBox<T> {
     }
 
     #[inline]
-    pub fn as_ref<U>(&self) -> &U {
+    pub unsafe fn as_ref<U>(&self) -> &U {
         self.boxed.as_ref()
     }
 
     #[inline]
-    pub fn as_mut_ref<U>(&mut self) -> &mut U {
+    pub unsafe fn as_mut_ref<U>(&mut self) -> &mut U {
         self.boxed.as_mut_ref()
     }
 
     #[inline]
-    pub fn into_inner<U>(this: Self) -> U {
+    pub unsafe fn into_inner<U>(this: Self) -> U {
         let mut this = ManuallyDrop::new(this);
 
-        unsafe {
-            let ret = this.boxed.as_mut_ptr::<U>().read();
-            Self::dealloc::<U>(&mut *this);
+        let ret = this.boxed.as_mut_ptr::<U>().read();
+        Self::dealloc::<U>(&mut *this);
 
-            ret
-        }
+        ret
     }
 
     unsafe fn dealloc<U>(this: &mut Self) {
@@ -136,7 +134,7 @@ impl<T> TaggedBox<T> {
     }
 
     #[inline]
-    pub fn into_raw<U>(mut self) -> *mut U {
+    pub unsafe fn into_raw<U>(mut self) -> *mut U {
         self.boxed.as_mut_ptr()
     }
 
@@ -147,13 +145,13 @@ impl<T> TaggedBox<T> {
 
     #[inline]
     #[allow(dead_code)]
-    pub(crate) const fn as_ptr<U>(&self) -> *const U {
+    pub(crate) const unsafe fn as_ptr<U>(&self) -> *const U {
         self.boxed.as_ptr() as *const U
     }
 
     #[inline]
     #[allow(dead_code)]
-    pub(crate) fn as_mut_ptr<U>(&mut self) -> *mut U {
+    pub(crate) unsafe fn as_mut_ptr<U>(&mut self) -> *mut U {
         self.boxed.as_mut_ptr() as *mut U
     }
 }
@@ -212,15 +210,6 @@ where
     }
 }
 
-impl<T> From<T> for TaggedBox<T>
-where
-    T: From<TaggedBox<T>>,
-{
-    fn from(value: T) -> TaggedBox<T> {
-        value.into()
-    }
-}
-
 impl<T> Ord for TaggedBox<T>
 where
     T: From<TaggedBox<T>> + Into<TaggedBox<T>> + Ord + Clone,
@@ -272,6 +261,12 @@ macro_rules! tagged_box {
                 )*
 
                 panic!("Attempted to drop a variant that doesn't exist");
+            }
+        }
+
+        impl From<$struct> for $crate::TaggedBox<$enum> {
+            fn from(this: $struct) -> Self {
+                this.value
             }
         }
 
