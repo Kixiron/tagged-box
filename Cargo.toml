@@ -10,3 +10,11 @@ repository = "https://github.com/Kixiron/tagged-box"
 readme = "README.md"
 keywords = ["nanbox", "tagged-pointers", "pointers"]
 categories = ["no-std", "memory"]
+
+[features]
+default = ["48bits"]
+48bits = []
+57bits = []
+
+[dev-dependencies]
+color-backtrace = "0.3.0"
