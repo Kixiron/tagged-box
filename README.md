@@ -1,6 +1,6 @@
 # Tagged-box
 
-[![Crates.io](https://img.shields.io/crates/v/tagged-box)](https://crates.io/tagged-box)
+[![Crates.io](https://img.shields.io/crates/v/tagged-box?style=flat)](https://crates.io/crates/tagged-box)
 [![Docs.rs](https://docs.rs/tagged-box/badge.svg)](https://docs.rs/tagged-box)
 [![GitHub](https://img.shields.io/github/languages/top/Kixiron/tagged-box)](https://github.com/Kixiron/tagged-box)
 [![LOC](https://tokei.rs/b1/github/Kixiron/tagged-box)](https://github.com/Kixiron/tagged-box)
