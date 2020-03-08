@@ -28,23 +28,20 @@
 //!     type Inner = Item;
 //!
 //!     fn into_inner(self) -> Self::Inner {
-//!         let mut discriminant = 0;
-//!
-//!         unsafe {
-//!             if self.value.discriminant() == discriminant {
-//!                 return Item::Integer(TaggedBox::into_inner(self.value));
-//!             } else {
-//!                 discriminant += 1;
-//!             }
-//!
-//!             if self.value.discriminant() == discriminant {
-//!                 return Item::Boolean(TaggedBox::into_inner(self.value));
-//!             } else {
-//!                 discriminant += 1;
-//!             }
+//!         enum EnumCounter {
+//!             Integer,
+//!             Boolean,
 //!         }
 //!
-//!         panic!();
+//!         unsafe {
+//!             match self.value.discriminant() {
+//!                 discrim if discrim == EnumCounter::Integer as _ =>
+//!                     Item::Integer(TaggedBox::into_inner(self.value)),
+//!                 discrim if discrim == EnumCounter::Boolean as _ =>
+//!                     Item::Boolean(TaggedBox::into_inner(self.value)),
+//!                 _ => panic!(),
+//!             }
+//!         }
 //!     }
 //! }
 //!
@@ -55,70 +52,56 @@
 //!
 //! impl TaggableInner for Item {
 //!     fn into_tagged_box(self) -> TaggedBox<Self> {
-//!         let mut discriminant = 0;
-//!     
-//!         if let Self::Integer(value) = self {
-//!             return TaggedBox::new(value, discriminant);
-//!         } else {
-//!             discriminant += 1;
+//!         enum EnumCounter {
+//!             Integer,
+//!             Boolean,
 //!         }
 //!
-//!         if let Self::Boolean(value) = self {
-//!             return TaggedBox::new(value, discriminant);
-//!         } else {
-//!             discriminant += 1;
+//!         match self {
+//!             Self::Integer(value) => TaggedBox::new(value, EnumCounter::Integer as _),
+//!             Self::Boolean(value) => TaggedBox::new(value, EnumCounter::Boolean as _),
 //!         }
-//!     
-//!         unreachable!();
 //!     }
 //!
 //!     fn from_tagged_box(tagged: TaggedBox<Self>) -> Self {
-//!         let mut discriminant = 0;
-//!
-//!         unsafe {
-//!             if tagged.discriminant() == discriminant {
-//!                 return Self::Integer(TaggedBox::into_inner(tagged));
-//!             } else {
-//!                 discriminant += 1;
-//!             }
-//!
-//!             if tagged.discriminant() == discriminant {
-//!                 return Self::Boolean(TaggedBox::into_inner(tagged));
-//!             } else {
-//!                 discriminant += 1;
-//!             }
+//!         enum EnumCounter {
+//!             Integer,
+//!             Boolean,
 //!         }
 //!
-//!         panic!();
+//!         unsafe {
+//!             match tagged.discriminant() {
+//!                 discrim if discrim == EnumCounter::Integer as _ =>
+//!                     Self::Integer(TaggedBox::into_inner(tagged)),
+//!                 discrim if discrim == EnumCounter::Boolean as _ =>
+//!                     Self::Boolean(TaggedBox::into_inner(tagged)),
+//!                 _ => panic!(),
+//!             }
+//!         }
 //!     }
 //!
 //!     unsafe fn ref_from_tagged_box<F>(tagged: &TaggedBox<Self>, callback: F)
 //!     where
 //!         F: FnOnce(&Self),
 //!     {
-//!         let mut discriminant = 0;
-//!
-//!         unsafe {
-//!             if tagged.discriminant() == discriminant {
-//!                 let variant = ManuallyDrop::new(Self::Integer(tagged.as_ptr::<i32>().read()));
-//!                 (callback)(&variant);
-//!                 
-//!                 return;
-//!             } else {
-//!                 discriminant += 1;
-//!             }
-//!
-//!             if tagged.discriminant() == discriminant {
-//!                 let variant = ManuallyDrop::new(Self::Boolean(tagged.as_ptr::<bool>().read()));
-//!                 (callback)(&variant);
-//!                 
-//!                 return;
-//!             } else {
-//!                 discriminant += 1;
-//!             }
+//!         enum EnumCounter {
+//!             Integer,
+//!             Boolean,
 //!         }
 //!
-//!         panic!();
+//!         unsafe {
+//!             match tagged.discriminant() {
+//!                 discrim if discrim == EnumCounter::Integer as _ => {
+//!                     let variant = ManuallyDrop::new(Self::Integer(tagged.as_ptr::<i32>().read()));
+//!                     (callback)(&variant)
+//!                 }
+//!                 discrim if discrim == EnumCounter::Boolean as _ => {
+//!                     let variant = ManuallyDrop::new(Self::Boolean(tagged.as_ptr::<bool>().read()));
+//!                     (callback)(&variant)
+//!                 }
+//!                 _ => panic!(),
+//!             }
+//!         }
 //!     }
 //! }
 //! ```
@@ -128,81 +111,7 @@
 //!
 //! ```rust
 //! # use tagged_box::{TaggedBox, TaggableContainer, TaggableInner};
-//! # use core::mem::ManuallyDrop;
-//! #
-//! # enum Item {
-//! #     Integer(i32),
-//! #     Boolean(bool),
-//! # }
-//! #
-//! # impl TaggableInner for Item {
-//! #     fn into_tagged_box(self) -> TaggedBox<Self> {
-//! #         let mut discriminant = 0;
-//! #     
-//! #         if let Self::Integer(value) = self {
-//! #             return TaggedBox::new(value, discriminant);
-//! #         } else {
-//! #             discriminant += 1;
-//! #         }
-//! #
-//! #         if let Self::Boolean(value) = self {
-//! #             return TaggedBox::new(value, discriminant);
-//! #         } else {
-//! #             discriminant += 1;
-//! #         }
-//! #     
-//! #         unreachable!();
-//! #     }
-//! #
-//! #     fn from_tagged_box(tagged: TaggedBox<Self>) -> Self {
-//! #         let mut discriminant = 0;
-//! #
-//! #         unsafe {
-//! #             if tagged.discriminant() == discriminant {
-//! #                 return Self::Integer(TaggedBox::into_inner(tagged));
-//! #             } else {
-//! #                 discriminant += 1;
-//! #             }
-//! #
-//! #             if tagged.discriminant() == discriminant {
-//! #                 return Self::Boolean(TaggedBox::into_inner(tagged));
-//! #             } else {
-//! #                 discriminant += 1;
-//! #             }
-//! #         }
-//! #
-//! #         panic!();
-//! #     }
-//! #
-//! #     unsafe fn ref_from_tagged_box<F>(tagged: &TaggedBox<Self>, callback: F)
-//! #     where
-//! #         F: FnOnce(&Self),
-//! #     {
-//! #         let mut discriminant = 0;
-//! #
-//! #         unsafe {
-//! #             if tagged.discriminant() == discriminant {
-//! #                 let variant = ManuallyDrop::new(Self::Integer(tagged.as_ptr::<i32>().read()));
-//! #                 (callback)(&variant);
-//! #                 
-//! #                 return;
-//! #             } else {
-//! #                 discriminant += 1;
-//! #             }
-//! #
-//! #             if tagged.discriminant() == discriminant {
-//! #                 let variant = ManuallyDrop::new(Self::Boolean(tagged.as_ptr::<bool>().read()));
-//! #                 (callback)(&variant);
-//! #                 
-//! #                 return;
-//! #             } else {
-//! #                 discriminant += 1;
-//! #             }
-//! #         }
-//! #
-//! #         panic!();
-//! #     }
-//! # }
+//! # enum Item {}
 //! #
 //! #[repr(transparent)]
 //! struct Container {
@@ -210,6 +119,19 @@
 //! }
 //! ```
 //!
+//! This is the 'handle' if you will. It allows you to generically hold multiple different instances
+//! of the same overarching enum that have different internal types. It's essentially an enum and a
+//! [`Box`] rolled into one. However, unlike leaving the safety guarantees up to you, the `tagged_box!`
+//! macro creates a default implementation that makes sure that everything goes smoothly.
+//!
+//! Next is the implementation of [`TaggableContainer`] for `Container`, which is the safe interface for
+//! retrieving the correct variant of the enum from the backing `TaggedBox`.
+//!
+//! Then we have the `Item` enum, which is a representation of what the `TaggedBox` is holding, and can be conveniently
+//! gotten from any `Container` instance. This has the [`TaggableInner`] trait implemented on it, which allows us to
+//! have convenient things like `Clone`, `PartialEq` and `Ord`.
+//!
 //! [`tagged_box!`]: ../macro.tagged_box.html
-
-// TODO: Finish guide
+//! [`Box`]: https://doc.rust-lang.org/alloc/boxed/struct.Box.html
+//! [`TaggableContainer`]: crate::TaggableContainer
+//! [`TaggableInner`]: crate::TaggableInner

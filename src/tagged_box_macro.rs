@@ -1,15 +1,14 @@
 /// Constructs a wrapper type and an associated enum to be stored as a [`TaggedBox`] that
-/// can be used safely.
+/// can be used safely.  
+/// For more implementation details, see [manually implementing a tagged enum]
 ///
 /// # Example Usage
-///
-/// The recommended way to use this crate is through the `tagged_box` macro, used like this:
 ///
 /// ```rust
 /// # extern crate alloc;
 /// # use alloc::string::String;
 /// # use tagged_box::tagged_box;
-///
+/// #
 /// tagged_box! {
 ///     #[derive(Debug, Clone, PartialEq)] // This will be applied to both the inner enum and outer container
 ///     struct Container, enum Item {
@@ -20,8 +19,7 @@
 /// }
 /// ```
 ///
-/// Note: The number of variants must be <= 128 if using the `57bits` feature and <= 65536 if using the `48bits` feature,
-/// see [`Discriminant`] for more info
+/// Note: The number of variants must be <= [`MAX_DISCRIMINANT`]
 ///
 /// This will create a struct `Container` and an enum `Item`. Expanded, they will look like this:
 ///
@@ -30,7 +28,7 @@
 /// # use alloc::string::String;
 /// # use tagged_box::{TaggableInner, TaggedBox};
 /// # use core::mem::ManuallyDrop;
-///
+/// #
 /// #[derive(Debug, Clone, PartialEq)]
 /// #[repr(transparent)] // repr(transparent) is automatically added to the generated structs
 /// struct Container {
@@ -44,6 +42,7 @@
 ///     String(String),
 /// }
 ///
+/// // ..Omitted some generated code
 /// # // Have to implement this to avoid compile error
 /// # impl TaggableInner for Item {
 /// #     fn into_tagged_box(self) -> TaggedBox<Self> {
@@ -53,7 +52,6 @@
 /// #             Self::String(string) => TaggedBox::new(string, 2),
 /// #         }
 /// #     }
-/// #
 /// #     fn from_tagged_box(tagged: TaggedBox<Self>) -> Self {
 /// #         unsafe {
 /// #             match tagged.discriminant() {
@@ -64,7 +62,6 @@
 /// #             }
 /// #         }
 /// #     }
-/// #
 /// #     unsafe fn ref_from_tagged_box<F>(tagged: &TaggedBox<Self>, callback: F)
 /// #     where
 /// #         F: FnOnce(&Self),
@@ -79,8 +76,6 @@
 /// #         (callback)(&value);
 /// #     }
 /// # }
-///
-/// // Omitted some generated code
 /// ```
 ///
 /// The omitted code will contain `From` implementations that allow you to get a `Container` from any value that would
@@ -98,7 +93,7 @@
 /// #         String(String),
 /// #     }
 /// # }
-///
+/// #
 /// Container::from(10i32);         // Works!
 /// Container::from(String::new()); // Works!
 /// Container::from(Vec::new());    // Doesn't work :(
@@ -121,7 +116,7 @@
 /// #         String(String),
 /// #     }
 /// # }
-///
+/// #
 /// use tagged_box::TaggableContainer;
 ///
 /// let container = Container::from(String::from("Hello from tagged-box!"));
@@ -129,7 +124,8 @@
 /// ```
 ///
 /// [`TaggedBox`]: crate::TaggedBox
-/// [`Discriminant`]: crate::Discriminant
+/// [manually implementing a tagged enum]: crate::manually_impl_enum
+/// [`MAX_DISCRIMINANT`]: crate::discriminant::MAX_DISCRIMINANT
 /// [`into_inner`]: crate::TaggableContainer#into_inner
 /// [`TaggableContainer`]: crate::TaggableContainer
 #[macro_export]
@@ -140,15 +136,6 @@ macro_rules! tagged_box {
             $( $variant:ident($ty:ty), )+
         }
     ) => {
-        // #[doc(hidden)]
-        // mod __tagged_box_generated {
-        //     #[doc(hidden)]
-        //     #[allow(dead_code, non_camel_case_types)]
-        //     pub(super) enum __tagged_box_generated_count_enum {
-        //         $( $variant ),+
-        //     }
-        // }
-
         $( #[$meta] )*
         #[repr(transparent)]
         $struct_vis struct $struct {
@@ -158,33 +145,25 @@ macro_rules! tagged_box {
         impl $crate::TaggableContainer for $struct {
             type Inner = $enum;
 
-            #[allow(cast_possible_truncation, cast_lossless, unnecessary_cast, unused_assignments)]
             fn into_inner(self) -> $enum {
-                let mut discriminant = 0;
+                #[doc(hidden)]
+                #[allow(non_camel_case_types)]
+                enum __tagged_box_enum_counter {
+                    $( $variant ),+
+                }
 
                 // Safety: The generated discriminants and their associated variants should be valid, as
                 // they are macro generated. As such, when calling `into_inner` the requested type should
                 // be valid for the tagged pointer
                 unsafe {
-                    // TODO: Enable match statement
-                    // match self.value.discriminant() {
-                    //     $(
-                    //         i if i == __tagged_box_generated::__tagged_box_generated_count_enum::$variant as u16 =>
-                    //             $enum::$variant($crate::TaggedBox::into_inner::<$ty>(self.value)),
-                    //     )+
-                    //     _ => panic!("Attempted to create an enum variant from a discriminant that doesn't exist!"),
-                    // }
-
-                    $(
-                        if self.value.discriminant() == discriminant {
-                            return $enum::$variant($crate::TaggedBox::into_inner::<$ty>(self.value));
-                        } else {
-                            discriminant += 1;
-                        }
-                    )+
+                    match self.value.discriminant() {
+                        $(
+                            discrim if discrim == __tagged_box_enum_counter::$variant as _ =>
+                                $enum::$variant($crate::TaggedBox::into_inner::<$ty>(self.value)),
+                        )+
+                        _ => panic!("Attempted to create an enum variant from a discriminant that doesn't exist!"),
+                    }
                 }
-
-                panic!("Attempted to create an enum variant from a discriminant that doesn't exist!");
             }
         }
 
@@ -218,108 +197,80 @@ macro_rules! tagged_box {
         }
 
         impl $crate::TaggableInner for $enum {
-            #[allow(
-                unused_assignments,
-                irrefutable_let_patterns,
-                unused_assignments,
-                cast_possible_truncation,
-                cast_lossless,
-                unnecessary_cast
-            )]
             fn into_tagged_box(self) -> $crate::TaggedBox<Self> {
-                // TODO: Enable match statement
-                // match self {
-                //     $(
-                //         Self::$variant(value) => $crate::TaggedBox::new(
-                //             value,
-                //             __tagged_box_generated::__tagged_box_generated_count_enum::$variant as u16 as $crate::Discriminant
-                //         ),
-                //     )+
-                // }
+                #[doc(hidden)]
+                #[allow(non_camel_case_types)]
+                enum __tagged_box_enum_counter {
+                    $( $variant ),+
+                }
 
-                let mut discriminant = 0;
-
-                $(
-                    if let Self::$variant(value) = self {
-                        return $crate::TaggedBox::new(value, discriminant);
-                    } else {
-                        discriminant += 1;
-                    }
-                )+
-
-                unreachable!("All possible variants should have been destructed");
+                match self {
+                    $(
+                        Self::$variant(value) => $crate::TaggedBox::new(value, __tagged_box_enum_counter::$variant as _),
+                    )+
+                }
             }
 
             fn from_tagged_box(tagged: $crate::TaggedBox<$enum>) -> Self {
-                let mut discriminant = 0;
-
                 // Safety: The discriminants and the enum variants should be synced, as they are all
                 // generated by a macro. Therefore, when `tagged`'s discriminant and the current discriminant
                 // are the same, the variant should be valid for the data stored at `tagged`
-                #[allow(unused_assignments, cast_possible_truncation, cast_lossless, unnecessary_cast)]
                 unsafe {
-                    // match tagged.discriminant() {
-                    //     $(
-                    //         i if i == __tagged_box_generated::__tagged_box_generated_count_enum::$variant as u16 =>
-                    //             Self::$variant($crate::TaggedBox::into_inner::<$ty>(tagged)),
-                    //     )+
-                    //
-                    //     invalid => {
-                    //         // Create an [&'static str] from the number of variants, and then get the length of that
-                    //         const TOTAL_VARIANTS: usize = [$( stringify!($variant) ),+].len();
-                    //         panic!(
-                    //             "The number of variants in `{}` is {}, but a variant by the discriminant of {} was attempted to be created",
-                    //             stringify!($enum),
-                    //             TOTAL_VARIANTS,
-                    //             invalid
-                    //         );
-                    //     }
-                    // }
+                    #[doc(hidden)]
+                    #[allow(non_camel_case_types)]
+                    enum __tagged_box_enum_counter {
+                        $( $variant ),+
+                    }
 
-                    $(
-                        if tagged.discriminant() == discriminant {
-                            return Self::$variant($crate::TaggedBox::into_inner::<$ty>(tagged));
-                        } else {
-                            discriminant += 1;
+                    match tagged.discriminant() {
+                        $(
+                            discrim if discrim == __tagged_box_enum_counter::$variant as _ =>
+                                Self::$variant($crate::TaggedBox::into_inner::<$ty>(tagged)),
+                        )+
+
+                        discriminant => {
+                            #[allow(non_upper_case_globals)]
+                            const __tagged_box_total_variants: usize = [$( stringify!($variant) ),+].len();
+                            panic!(
+                                "The number of variants in `{}` is {}, but a variant by the discriminant of {} was attempted to be created",
+                                stringify!($enum),
+                                __tagged_box_total_variants,
+                                discriminant
+                            );
                         }
-                    )+
+                    }
                 }
-
-                const TOTAL_VARIANTS: usize = [$( stringify!($variant) ),+].len();
-                panic!(
-                    "The number of variants in `{}` is {}, but a variant by the discriminant of {} was attempted to be created",
-                    stringify!($enum),
-                    TOTAL_VARIANTS,
-                    discriminant
-                );
             }
 
-            #[allow(unused_assignments)]
             unsafe fn ref_from_tagged_box<F>(tagged: &$crate::TaggedBox<$enum>, callback: F)
             where
                 F: FnOnce(&$enum),
             {
-                let mut discriminant = 0;
+                #[doc(hidden)]
+                #[allow(non_camel_case_types)]
+                enum __tagged_box_enum_counter {
+                    $( $variant ),+
+                }
 
-                $(
-                    if tagged.discriminant() == discriminant {
-                        let variant = core::mem::ManuallyDrop::new(Self::$variant(tagged.as_ptr::<$ty>().read()));
-                        (callback)(&variant);
+                match tagged.discriminant() {
+                    $(
+                        discrim if discrim == __tagged_box_enum_counter::$variant as _ => {
+                            let variant = core::mem::ManuallyDrop::new(Self::$variant(tagged.as_ptr::<$ty>().read()));
+                            (callback)(&variant);
+                        }
+                    )+
 
-                        return;
-                    } else {
-                        discriminant += 1;
+                    discriminant => {
+                        #[allow(non_upper_case_globals)]
+                        const __tagged_box_total_variants: usize = [$( stringify!($variant) ),+].len();
+                        panic!(
+                            "The number of variants in `{}` is {}, but a variant by the discriminant of {} was attempted to be referenced",
+                            stringify!($enum),
+                            __tagged_box_total_variants,
+                            discriminant
+                        );
                     }
-                )+
-
-                // Create an [&'static str] from the number of variants, and then get the length of that
-                const TOTAL_VARIANTS: usize = [$( stringify!($variant) ),+].len();
-                panic!(
-                    "The number of variants in `{}` is {}, but a variant by the discriminant of {} was attempted to be referenced",
-                    stringify!($enum),
-                    TOTAL_VARIANTS,
-                    discriminant
-                );
+                }
             }
         }
     };

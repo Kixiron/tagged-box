@@ -1,29 +1,63 @@
 //! Stores variables that change upon different reserved pointer widths, as set by features
 
-/// A discriminant stored in a [`TaggedPointer`]
-///
-/// [`TaggedPointer`]: crate::TaggedPointer
-pub type Discriminant = variables::InnerDiscriminant;
+pub use variables::*;
 
-/// The maximum allowed value of a discriminant, determined by the number of free bits
-pub const MAX_DISCRIMINANT: Discriminant = variables::MAX_DISCRIMINANT_INNER;
+/// Macro to help generate documentation  
+/// Note: Any actual expressions that cannot be coerced into an `ident` should be wrapped
+/// in a combination of `stringify!` and `concat!`
+macro_rules! doc {
+    ($($expr:expr),*; $($tt:tt)*) => {
+        doc!(@add_doc
+            concat!($( doc!(@match $expr) ),*);
+            $( $tt )*
+        );
+    };
 
-/// The number of reserved bits of a pointer
-pub const POINTER_WIDTH: usize = variables::POINTER_WIDTH_INNER;
+    (@match $lit:literal) => {
+        $lit
+    };
+    (@match $expr:expr) => {
+        concat!($expr)
+    };
 
-/// A mask to remove the upper free bits of a tagged pointer
-pub const DISCRIMINANT_MASK: usize = variables::DISCRIMINANT_MASK_INNER;
+    (@add_doc $s:expr; $($tt:tt)*) => {
+        #[doc = $s]
+        $( $tt )*
+    };
+}
 
 /// Macro to help generate the discriminant variables for every reserved pointer width
 macro_rules! generate_discriminants {
-    ($([$feature:literal, $discrim:ty, $max:expr, $ptr_width:expr, $free_bits:expr]),*) => {
+    ($([ $feature:literal, $discrim:ty, $max:expr, $ptr_width:expr, $free_bits:expr ]),*) => {
         $(
             #[cfg(feature = $feature)]
             mod variables {
-                pub(super) type InnerDiscriminant = $discrim;
-                pub(super) const MAX_DISCRIMINANT_INNER: super::Discriminant = $max;
-                pub(super) const POINTER_WIDTH_INNER: usize = $ptr_width;
-                pub(super) const DISCRIMINANT_MASK_INNER: usize = usize::max_value() >> $free_bits;
+                doc! {
+                    "A discriminant stored in a [`TaggedPointer`], represented by a `", stringify!($discrim),
+                    "` for the `", $feature, "` feature\n\n[`TaggedPointer`]: crate::TaggedPointer";
+                    pub type Discriminant = $discrim;
+                }
+
+                doc! {
+                    "The maximum allowed value of a discriminant, which for the `", $feature, "` feature is ", $max;
+                    pub const MAX_DISCRIMINANT: Discriminant = $max;
+                }
+
+                doc! {
+                    "The maximum allowed value of a pointer, which for the `", $feature, "` feature is `2 ^ ", $ptr_width, "`";
+                    pub const MAX_POINTER_VALUE: usize = usize::max_value() >> $free_bits;
+                }
+
+                doc! {
+                    "The reserved width of a pointer, which for the `", $feature, "` feature is ", $ptr_width, " bits";
+                    pub const POINTER_WIDTH: usize = $ptr_width;
+                }
+
+                doc! {
+                    "A mask to remove the upper free bits of a tagged pointer, which for the `", $feature,
+                    "` feature is `usize::MAX >> ", $free_bits, "`";
+                    pub const DISCRIMINANT_MASK: usize = usize::max_value() >> $free_bits;
+                }
             }
         )*
     };
