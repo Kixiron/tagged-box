@@ -3,6 +3,7 @@
 //! [![Crates.io](https://img.shields.io/crates/v/tagged-box)](https://crates.io/tagged-box)
 //! [![Docs.rs](https://docs.rs/tagged-box/badge.svg)](https://docs.rs/tagged-box)
 //! [![GitHub](https://img.shields.io/github/languages/top/Kixiron/tagged-box)](https://github.com/Kixiron/tagged-box)
+//! [![LOC](https://tokei.rs/b1/github/Kixiron/tagged-box)](https://github.com/Kixiron/tagged-box)
 //!
 //! A `no_std`, zero-dependency crate for the creation and management of NaN-boxed types with
 //! [`Box`]-like semantics and tagged pointers, tagged pointers and a macro interface to safely
