@@ -1,0 +1,107 @@
+[tasks.test-all]
+script_runner = "@rust"
+script = ['''
+use std::{
+    process::{Command, ExitStatus},
+    io::{self, Write},
+};
+
+fn main() {
+    let features = vec![
+        "48bits", "49bits", "50bits", 
+        "51bits", "52bits", "53bits", 
+        "54bits", "55bits", "56bits", 
+        "57bits",
+    ];
+    let mut successes = Vec::with_capacity(features.len());
+    let mut failures = Vec::with_capacity(features.len());
+    
+    for feature in features {
+        let output = Command::new("cargo")
+            .args(&["test", "--no-default-features", "--features", feature])
+            .output()
+            .unwrap();
+
+        println!("Finished testing with feature `{}`, status: {}", feature, output.status);
+
+        if output.status.success() {
+            successes.push(feature);
+        } else {
+            failures.push(feature);
+        }
+    }
+
+    println!(
+        "{} features passed all tests, {} failed", 
+        successes.len(), 
+        failures.len()
+    );
+
+    if failures.len() > 0 {        
+        println!(
+            "Testing failed on the following features: {}",
+            failures.join(", "),
+        );
+        std::process::exit(101);
+    }
+}
+''']
+
+[tasks.miri-all]
+script_runner = "@rust"
+script = ['''
+use std::{
+    process::{Command, ExitStatus},
+    io::{self, Write},
+};
+
+fn main() {
+    let features = vec![
+        "48bits", "49bits", "50bits", 
+        "51bits", "52bits", "53bits", 
+        "54bits", "55bits", "56bits", 
+        "57bits",
+    ];
+    let mut successes = Vec::with_capacity(features.len());
+    let mut failures = Vec::with_capacity(features.len());
+
+    Command::new("cargo")
+        .arg("clean")
+        .status()
+        .unwrap();
+
+    Command::new("cargo")
+        .args(&["miri", "setup"])
+        .status()
+        .unwrap();
+    
+    for feature in features {
+        let output = Command::new("cargo")
+            .args(&["miri", "test", "--no-default-features", "--features", feature])
+            .output()
+            .unwrap();
+
+        println!("Finished miri with feature `{}`, status: {}", feature, output.status);
+
+        if output.status.success() {
+            successes.push(feature);
+        } else {
+            failures.push(feature);
+        }
+    }
+
+    println!(
+        "{} features passed miri, {} failed", 
+        successes.len(), 
+        failures.len()
+    );
+
+    if failures.len() > 0 {
+        println!(
+            "Miri failed on the following features: {}",
+            failures.join(", "),
+        );
+        std::process::exit(101);
+    }
+}
+''']

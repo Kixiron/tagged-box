@@ -8,8 +8,8 @@ license = "MIT OR Apache-2.0"
 homepage = "https://github.com/Kixiron/tagged-box"
 repository = "https://github.com/Kixiron/tagged-box"
 readme = "README.md"
-keywords = ["nanbox", "tagged-pointers", "pointers"]
-categories = ["no-std", "memory"]
+keywords = ["nanbox", "tagged-pointers", "pointers", "tagged-enum"]
+categories = ["no-std", "embedded"]
 
 [features]
 default = ["48bits"]

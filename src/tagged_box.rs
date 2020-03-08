@@ -378,7 +378,14 @@ where
     T: TaggableInner + fmt::Debug + Clone,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", T::from_tagged_box(self.clone()))
+        let mut result = Ok(());
+        unsafe {
+            T::ref_from_tagged_box(self, |this| {
+                result = write!(f, "{:?}", this);
+            });
+        }
+
+        result
     }
 }
 
@@ -403,11 +410,16 @@ where
     T: TaggableInner + Clone,
 {
     fn clone(&self) -> Self {
-        T::from_tagged_box(TaggedBox {
-            boxed: self.boxed,
-            _type: PhantomData,
-        })
-        .into_tagged_box()
+        let mut output = None;
+        unsafe {
+            T::ref_from_tagged_box(self, |this| {
+                output = Some(this.clone());
+            });
+        }
+
+        output
+            .expect("The inner value could not be fetched")
+            .into_tagged_box()
     }
 }
 
@@ -415,7 +427,7 @@ impl<T> Copy for TaggedBox<T> where T: TaggableInner + Copy {}
 
 impl<T> PartialEq for TaggedBox<T>
 where
-    T: TaggableInner + PartialEq<T> + Clone,
+    T: TaggableInner + PartialEq<T>,
 {
     fn eq(&self, other: &TaggedBox<T>) -> bool {
         let mut eq = false;
@@ -431,11 +443,11 @@ where
     }
 }
 
-impl<T> Eq for TaggedBox<T> where T: TaggableInner + Eq + Clone {}
+impl<T> Eq for TaggedBox<T> where T: TaggableInner + Eq {}
 
 impl<T> PartialOrd for TaggedBox<T>
 where
-    T: TaggableInner + PartialOrd<T> + Clone,
+    T: TaggableInner + PartialOrd<T>,
 {
     fn partial_cmp(&self, other: &TaggedBox<T>) -> Option<cmp::Ordering> {
         let mut cmp = None;
@@ -453,7 +465,7 @@ where
 
 impl<T> Ord for TaggedBox<T>
 where
-    T: TaggableInner + Ord + Clone,
+    T: TaggableInner + Ord,
 {
     fn cmp(&self, other: &TaggedBox<T>) -> cmp::Ordering {
         let mut cmp = cmp::Ordering::Equal;
@@ -542,19 +554,37 @@ mod tests {
         tagged_box! {
             #[derive(Clone, Debug, PartialEq)]
             struct Container, enum Enum {
-                Variant(usize),
+                Usize(usize),
+                String(String),
             }
         }
 
-        let original = Container::from(100usize);
+        let original_usize = Container::from(100usize);
 
-        let mut clone = original.clone().into_inner().into_tagged_box();
+        let mut cloned_usize = original_usize.clone().into_inner().into_tagged_box();
         unsafe {
-            *clone.as_mut_ref::<usize>() *= 100;
+            *cloned_usize.as_mut_ref::<usize>() *= 100;
         }
+        let cloned_usize = Enum::from_tagged_box(cloned_usize);
+        let original_usize = original_usize.into_inner();
 
-        assert_eq!(Enum::Variant(100 * 100), Enum::from_tagged_box(clone));
-        assert_eq!(Enum::Variant(100), original.into_inner());
+        assert_ne!(&original_usize, &cloned_usize);
+        assert_eq!(&Enum::Usize(100 * 100), &cloned_usize);
+        assert_eq!(Enum::Usize(100), original_usize);
+
+        let original_string = Container::from(String::from("Hello"));
+
+        let mut cloned_string = original_string.clone().into_inner().into_tagged_box();
+        unsafe {
+            cloned_string.as_mut_ref::<String>().push_str(", World!");
+        }
+        let cloned_string = Enum::from_tagged_box(cloned_string);
+        let original_string = original_string.into_inner();
+
+        assert_ne!(&original_string, &cloned_string);
+        assert_eq!(&Enum::String(String::from("Hello, World!")), &cloned_string);
+        assert_eq!(Enum::String(String::from("Hello")), original_string);
+        assert_ne!(cloned_string, cloned_usize);
     }
 
     #[test]
