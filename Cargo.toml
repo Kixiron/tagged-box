@@ -1,6 +1,6 @@
 [package]
 name = "tagged-box"
-version = "0.1.0"
+version = "0.1.1"
 authors = ["Chase Wilson <contact@chasewilson.dev>"]
 description = "An implementation of Box that uses tagged pointers"
 edition = "2018"
