@@ -64,8 +64,14 @@ macro_rules! generate_discriminants {
 }
 
 generate_discriminants! {
+    ["63bits", u8,  1,     63, 1 ],
+    ["62bits", u8,  3,     62, 2 ],
+    ["61bits", u8,  7,     61, 3 ],
+    ["60bits", u8,  15,    60, 4 ],
+    ["59bits", u8,  31,    59, 5 ],
+    ["58bits", u8,  63,    58, 6 ],
     ["57bits", u8,  127,   57, 7 ],
-    ["56bits", u8,  254,   56, 8 ],
+    ["56bits", u8,  255,   56, 8 ],
     ["55bits", u16, 511,   55, 9 ],
     ["54bits", u16, 1023,  54, 10],
     ["53bits", u16, 2047,  53, 11],

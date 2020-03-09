@@ -79,25 +79,75 @@ impl<T> TaggedBox<T> {
     ///
     #[inline]
     pub fn new<U>(val: U, discriminant: Discriminant) -> Self {
-        let ptr = if mem::size_of::<U>() == 0 {
-            ptr::NonNull::dangling().as_ptr()
+        if mem::size_of::<U>() == 0 {
+            Self::dangling(discriminant)
         } else {
             let layout = Layout::new::<U>();
 
             // Safety: The allocation should be properly handled by alloc + layout,
             // and writing should be properly aligned, as the pointer came from the
             // global allocator
-            unsafe {
+            let ptr = unsafe {
                 let ptr = alloc::alloc::alloc(layout) as *mut U;
                 assert!(ptr as usize != 0);
                 ptr.write(val);
 
                 ptr
+            };
+
+            Self {
+                boxed: TaggedPointer::new(ptr as usize, discriminant),
+                _type: PhantomData,
             }
-        };
+        }
+    }
+
+    // TODO: Document new methods
+
+    #[inline]
+    pub unsafe fn new_unchecked<U>(val: U, discriminant: Discriminant) -> Self {
+        if mem::size_of::<U>() == 0 {
+            Self::dangling_unchecked(discriminant)
+        } else {
+            let layout = Layout::new::<U>();
+
+            // Safety: The allocation should be properly handled by alloc + layout,
+            // and writing should be properly aligned, as the pointer came from the
+            // global allocator
+            let ptr = {
+                let ptr = alloc::alloc::alloc(layout) as *mut U;
+                assert!(ptr as usize != 0);
+                ptr.write(val);
+
+                ptr
+            };
+
+            Self {
+                boxed: TaggedPointer::new_unchecked(ptr as usize, discriminant),
+                _type: PhantomData,
+            }
+        }
+    }
+
+    /// Creates a dangling tagged box, see [`NonNull::dangling`] for more information
+    ///
+    /// [`NonNull::dangling`]: https://doc.rust-lang.org/core/ptr/struct.NonNull.html#method.dangling
+    #[inline]
+    pub fn dangling(discriminant: Discriminant) -> Self {
+        let ptr: *mut () = ptr::NonNull::dangling().as_ptr();
 
         Self {
             boxed: TaggedPointer::new(ptr as usize, discriminant),
+            _type: PhantomData,
+        }
+    }
+
+    #[inline]
+    pub unsafe fn dangling_unchecked(discriminant: Discriminant) -> Self {
+        let ptr: *mut () = ptr::NonNull::dangling().as_ptr();
+
+        Self {
+            boxed: TaggedPointer::new_unchecked(ptr as usize, discriminant),
             _type: PhantomData,
         }
     }
@@ -554,8 +604,8 @@ mod tests {
         tagged_box! {
             #[derive(Clone, Debug, PartialEq)]
             struct Container, enum Enum {
-                Usize(usize),
-                String(String),
+                Usize[(usize)],
+                Str[(String)],
             }
         }
 
@@ -582,8 +632,8 @@ mod tests {
         let original_string = original_string.into_inner();
 
         assert_ne!(&original_string, &cloned_string);
-        assert_eq!(&Enum::String(String::from("Hello, World!")), &cloned_string);
-        assert_eq!(Enum::String(String::from("Hello")), original_string);
+        assert_eq!(&Enum::Str(String::from("Hello, World!")), &cloned_string);
+        assert_eq!(Enum::Str(String::from("Hello")), original_string);
         assert_ne!(cloned_string, cloned_usize);
     }
 
@@ -666,6 +716,7 @@ mod tests {
         assert_eq!(bool_container.into_inner(), Value::Bool(true));
     }
 
+    /*
     #[test]
     fn storage() {
         #[derive(Debug, Copy, Clone, PartialEq)]
@@ -677,14 +728,14 @@ mod tests {
         tagged_box! {
             #[derive(Debug, Clone, PartialEq)]
             struct Outer, enum Inner {
-                Float(f32),
-                Int(i32),
-                Byte(u8),
-                Unit(()),
-                Bool(bool),
-                Array([u8; 8]),
-                Vector(Vec<u8>),
-                CustomStruct(CustomStruct),
+                Float[(f32)],
+                Int[(i32)],
+                Byte[(u8)],
+                Unit[],
+                Bool[(bool)],
+                Array[([u8; 8])],
+                Vector[(Vec<u8>)],
+                CustomStruct[(CustomStruct)],
             }
         }
 
@@ -710,4 +761,5 @@ mod tests {
             })
         );
     }
+    */
 }

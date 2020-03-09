@@ -128,12 +128,296 @@
 /// [`MAX_DISCRIMINANT`]: crate::discriminant::MAX_DISCRIMINANT
 /// [`into_inner`]: crate::TaggableContainer#into_inner
 /// [`TaggableContainer`]: crate::TaggableContainer
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __make_enum {
+    ([[$($meta:meta),*] $vis:vis, $enum:ident] [$($finished:tt)*] $ident:ident($($ty:ty),*) $($tt:tt)*) => {
+        $crate::__make_enum!([[$($meta)*] $vis, $enum] [$($finished)* $ident($($ty),*)] $($tt)*);
+    };
+
+    ([[$($meta:meta),*] $vis:vis, $enum:ident] [$($finished:tt)*] $ident:ident { $($var:ident: $ty:ty),* } $($tt:tt)*) => {
+        $crate::__make_enum!([[$($meta)*] $vis, $enum] [$($finished)* $ident { $($var: $ty),* }] $($tt)*);
+    };
+
+    ([[$($meta:meta),*] $vis:vis, $enum:ident] [$($finished:tt)*] $ident:ident $($tt:tt)*) => {
+        $crate::__make_enum!([[$($meta)*] $vis, $enum] [$($finished)* $ident] $($tt)*);
+    };
+
+    ([[$($meta:meta),*] $vis:vis, $enum:ident] [$($finished:tt)*]) => {
+        $( #[$meta] )*
+        #[allow(unused_parens)]
+        $vis enum $enum {
+            $( $finished )*
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __identify {
+    ([$($prev:tt)*] $next:ty, $($rest:tt)*) => {
+        $crate::__identify!([$( $prev )*, x] $( $rest )*)
+    };
+
+    ([$($prev:tt)*]) => {
+        $( $prev )*
+    };
+
+    (@tuple [$($prev:tt)*] $next:ty, $($rest:tt)*) => {
+        $crate::__identify!(@tuple [$( $prev )* x] $( $rest )*)
+    };
+
+    (@tuple [$($prev:tt)*]) => {
+        ($( $prev )*)
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __taggable_into_box {
+    ($self:expr, $enum:ident, $counter:ident, [$($tt:tt)*] $ident:ident ($($ty:ty),*) $($rest:tt)* ) => {
+        $crate::__taggable_into_box!($self, $enum, $counter,
+            [
+                $($tt)*
+                $enum::$ident($crate::__identify!([] $( $ty, )*)) =>
+                    $crate::TaggedBox::new(($crate::__identify!([] $( $ty, )*)), $counter::$ident as _),
+            ] $($rest)*
+        )
+    };
+
+    ($self:expr, $enum:ident, $counter:ident, [$($tt:tt)*] $ident:ident { $($member:ident: $ty:ty),* } $($rest:tt)* ) => {
+        $crate::__taggable_into_box!($self, $enum, $counter,
+            [
+                $($tt)*
+                $enum::$variant { $($member),* } => $crate::TaggedBox::new({
+                    #[repr(C)]
+                    struct $variant {
+                        $( $member: $ty ),*
+                    }
+                    $variant { $( $member ),* }
+                }, $counter::$variant as _),
+            ] $($rest)*
+        )
+    };
+
+    ($self:expr, $enum:ident, $counter:ident, [$($tt:tt)*] $ident:ident ($($ty:ty),*) $($rest:tt)* ) => {
+        $crate::__taggable_into_box!($self, $enum, $counter,
+            [
+                $($tt)*
+                $enum::$variant => $crate::TaggedBox::dangling($counter::$variant as _),
+            ] $($rest)*
+        )
+    };
+
+    ($self:expr, $enum:ident, $counter:ident, [$($tt:tt)*]) => {
+        match $self {
+            $( $tt )*
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __derive_from {
+    ($struct:ident, $enum:ident, $variant:ident, [($($ty:ty),*)]) => {
+        #[allow(unused_parens)]
+        impl From<($( $ty ),*)> for $struct {
+            #[inline]
+            fn from(value: ($( $ty ),*)) -> Self {
+                use $crate::TaggableInner;
+                let $crate::__identify!(@tuple [] $( $ty, )*) = value;
+                let variant = $enum::$variant($crate::__identify!([] $( $ty, )*));
+
+                Self {
+                    value: variant.into_tagged_box(),
+                }
+            }
+        }
+    };
+
+    ($struct:ident, $enum:ident, $variant:ident, [{ $($ident:ident: $ty:ty),* }]) => { };
+
+    ($struct:ident, $enum:ident, $variant:ident, []) => { };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __ptr_read_box {
+    ($self:ident, $variant:ident, $tagged:expr, [($($ty:ty),*)]) => {
+        $self::$variant($crate::TaggedBox::into_inner::<($( $ty ),*)>($tagged).read())
+    };
+
+    ($self:ident, $variant:ident, $tagged:expr, [{ $($ident:ident: $ty:ty),* }]) => {
+        $self::$variant({
+            #[repr(C)]
+            struct $variant {
+                $( $ident: $ty ),*
+            }
+            let $variant { $( $ident ),* } = $crate::TaggedBox::into_inner::<$variant>($tagged).read();
+            $self::$variant { $( $ident ),* }
+        })
+    };
+
+    ($self:ident, $variant:ident, $tagged:expr, []) => {
+        $self::$variant
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __boxed_into_inner {
+    ($enum:ident, $self:expr, $counter:ident, [$($tt:tt)*] $variant:ident($($ty:ty),*), $($rest:tt)*) => {
+        $crate::__boxed_into_inner!($enum, self, [
+            $($tt)*
+            discrim if discrim == $counter::$variant as _ => {
+                $self::$variant($crate::TaggedBox::into_inner::<($( $ty ),*)>($tagged))
+            },
+        ] $($rest)*);
+    };
+
+    ($enum:ident, $self:expr, $counter:ident, [$($tt:tt)*] $variant:ident { $($ident:ident: $ty:ty),* }, $($rest:tt)*) => {
+        $crate::__boxed_into_inner!($enum, self, [
+            $($tt)*
+            discrim if discrim == $counter::$variant as _ => self::$variant({
+                #[repr(C)]
+                struct $variant {
+                    $( $ident: $ty ),*
+                }
+                let $variant { $( $ident ),* } = $crate::TaggedBox::into_inner::<$variant>($tagged);
+                $self::$variant { $( $ident ),* }
+            }),
+        ] $($rest)*);
+    };
+
+    ($enum:ident, $self:expr, $counter:ident, [$($tt:tt)*] $variant:ident, $($rest:tt)*) => {
+        $crate::__boxed_into_inner!($enum, self, [
+            $($tt)*
+            discrim if discrim == $counter::$variant as _ => $self::$variant,
+        ] $($rest)*);
+    };
+
+    ($enum:ident, $self:expr, $counter:ident, [$($tt:tt)*] ) => {
+        #[allow(unused_parens)]
+        match $self.value.discriminant() {
+            $( $tt )*
+            _ => panic!("Attempted to create an enum variant from a discriminant that doesn't exist!"),
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __from_tagged_box {
+    ($tagged:expr, $enum:ident, $counter:ident, $total_variants:expr, [$($tt:tt)*] $variant:ident($($ty:ty),*), $($rest:tt)*) => {
+        $crate::__from_tagged_box!(
+            $tagged,
+            $enum,
+            $counter,
+            $total_variants,
+            [
+                $($tt)*
+                discrim if discrim == $counter::$variant as _ => {
+                    $self::$variant($crate::TaggedBox::into_inner::<($( $ty ),*)>($tagged))
+                },
+            ] $($rest)*
+        )
+    };
+
+    ($tagged:expr, $enum:ident, $counter:ident, $total_variants:expr, [$($tt:tt)*] $variant:ident { $($ident:ident: $ty:ty),* }, $($rest:tt)*) => {
+        $crate::__from_tagged_box!(
+            $tagged,
+            $enum,
+            $counter,
+            $total_variants,
+            [
+                $($tt)*
+                discrim if discrim == $counter::$variant as _ => self::$variant({
+                    #[repr(C)]
+                    struct $variant {
+                        $( $ident: $ty ),*
+                    }
+                    let $variant { $( $ident ),* } = $crate::TaggedBox::into_inner::<$variant>($tagged);
+                    $self::$variant { $( $ident ),* }
+                }),
+            ] $($rest)*
+        )
+    };
+
+    ($tagged:expr, $enum:ident, $counter:ident, $total_variants:expr, [$($tt:tt)*] $variant:ident, $($rest:tt)*) => {
+        $crate::__from_tagged_box!(
+            $tagged,
+            $enum,
+            $counter,
+            $total_variants,
+            [
+                $($tt)*
+                discrim if discrim == $counter::$variant as _ => $self::$variant,
+            ] $($rest)*
+        )
+    };
+
+    ($tagged:expr, $enum:ident, $counter:ident, $total_variants:expr, [$($tt:tt)*]) => {
+        #[allow(unused_parens)]
+        match $tagged.discriminant() {
+            $( $tt )*
+
+            discriminant => {
+                #[allow(non_upper_case_globals)]
+                panic!(
+                    "The number of variants in `{}` is {}, but a variant by the discriminant of {} was attempted to be created",
+                    stringify!($enum),
+                    $total_variants,
+                    discriminant
+                );
+            }
+        }
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __ref_from_tagged {
+    ($enum:ident, $tagged:expr, $counter:ident, $total_variants:expr, [$($tt:tt)*] $variant:ident, $($rest:tt)*) => {
+        $crate::__from_tagged_box!(
+            $enum,
+            $tagged,
+            $counter,
+            $total_variants,
+            [
+                $($tt)*
+                discrim if discrim == $counter::$variant as _ => {
+                    let variant = $crate::__ptr_read_box!(Self, $variant, tagged, [$( $tt )*]);
+                    (callback)(&variant);
+                },
+            ] $($rest)*
+        )
+    };
+
+    ($enum:ident, $tagged:expr, $counter:ident, $total_variants:expr, [$($tt:tt)*]) => {
+        #[allow(unused_parens)]
+        match $tagged.discriminant() {
+            $( $tt )*
+
+            discriminant => {
+                #[allow(non_upper_case_globals)]
+                panic!(
+                    "The number of variants in `{}` is {}, but a variant by the discriminant of {} was attempted to be referenced",
+                    stringify!($enum),
+                    $total_variants,
+                    discriminant
+                );
+            }
+        }
+    };
+}
+
 #[macro_export]
 macro_rules! tagged_box {
     (
         $( #[$meta:meta] )*
         $struct_vis:vis struct $struct:ident, $enum_vis:vis enum $enum:ident {
-            $( $variant:ident( $($ty:ty),* ), )+
+            $( $variant:ident[$($tt:tt)*], )+
         }
     ) => {
         $( #[$meta] )*
@@ -156,14 +440,7 @@ macro_rules! tagged_box {
                 // they are macro generated. As such, when calling `into_inner` the requested type should
                 // be valid for the tagged pointer
                 unsafe {
-                    #[allow(unused_parens)]
-                    match self.value.discriminant() {
-                        $(
-                            discrim if discrim == __tagged_box_enum_counter::$variant as _ =>
-                                $enum::$variant($crate::TaggedBox::into_inner::<($( $ty),*)>(self.value)),
-                        )+
-                        _ => panic!("Attempted to create an enum variant from a discriminant that doesn't exist!"),
-                    }
+                    $crate::__boxed_into_inner!($enum, self, __tagged_box_enum_counter, $($variant $($tt)*)*)
                 }
             }
         }
@@ -180,24 +457,15 @@ macro_rules! tagged_box {
         }
 
         $(
-            #[allow(unused_parens)]
-            impl From<($( $ty ),*)> for $struct {
-                #[inline]
-                fn from(value: ($( $ty ),*)) -> Self {
-                    use $crate::TaggableInner;
-
-                    Self {
-                        value: $enum::$variant(value).into_tagged_box(),
-                    }
-                }
-            }
+            $crate::__derive_from!($struct, $enum, $variant, [$( $tt )*]);
         )+
 
-        $( #[$meta] )*
-        #[allow(unused_parens)]
-        $enum_vis enum $enum {
-            $( $variant(($( $ty ),*)) ),+
-        }
+        $crate::__make_enum!(
+            [
+                [$($meta),*]
+                $enum_vis, $enum
+            ] [] $( $variant$($tt)* )*
+        );
 
         impl $crate::TaggableInner for $enum {
             fn into_tagged_box(self) -> $crate::TaggedBox<Self> {
@@ -207,11 +475,12 @@ macro_rules! tagged_box {
                     $( $variant ),+
                 }
 
-                match self {
-                    $(
-                        Self::$variant(value) => $crate::TaggedBox::new(value, __tagged_box_enum_counter::$variant as _),
-                    )+
-                }
+                $crate::__taggable_into_box!(
+                    self,
+                    Self,
+                    __tagged_box_enum_counter,
+                    [] $($variant $($tt)*)*
+                )
             }
 
             fn from_tagged_box(tagged: $crate::TaggedBox<$enum>) -> Self {
@@ -225,24 +494,14 @@ macro_rules! tagged_box {
                         $( $variant ),+
                     }
 
-                    #[allow(unused_parens)]
-                    match tagged.discriminant() {
-                        $(
-                            discrim if discrim == __tagged_box_enum_counter::$variant as _ =>
-                                Self::$variant($crate::TaggedBox::into_inner::<($( $ty ),*)>(tagged)),
-                        )+
-
-                        discriminant => {
-                            #[allow(non_upper_case_globals)]
-                            const __tagged_box_total_variants: usize = [$( stringify!($variant) ),+].len();
-                            panic!(
-                                "The number of variants in `{}` is {}, but a variant by the discriminant of {} was attempted to be created",
-                                stringify!($enum),
-                                __tagged_box_total_variants,
-                                discriminant
-                            );
-                        }
-                    }
+                    const __tagged_box_total_variants: usize = [$( stringify!($variant) ),+].len();
+                    $crate::__from_tagged_box!(
+                        tagged,
+                        Self,
+                        __tagged_box_enum_counter,
+                        __tagged_box_total_variants,
+                        [] $($variant $($tt)*)*
+                    )
                 }
             }
 
@@ -256,26 +515,14 @@ macro_rules! tagged_box {
                     $( $variant ),+
                 }
 
-                #[allow(unused_parens)]
-                match tagged.discriminant() {
-                    $(
-                        discrim if discrim == __tagged_box_enum_counter::$variant as _ => {
-                            let variant = core::mem::ManuallyDrop::new(Self::$variant(tagged.as_ptr::<($( $ty ),*)>().read()));
-                            (callback)(&variant);
-                        }
-                    )+
-
-                    discriminant => {
-                        #[allow(non_upper_case_globals)]
-                        const __tagged_box_total_variants: usize = [$( stringify!($variant) ),+].len();
-                        panic!(
-                            "The number of variants in `{}` is {}, but a variant by the discriminant of {} was attempted to be referenced",
-                            stringify!($enum),
-                            __tagged_box_total_variants,
-                            discriminant
-                        );
-                    }
-                }
+                const __tagged_box_total_variants: usize = [$( stringify!($variant) ),+].len();
+                $crate::__ref_from_tagged!(
+                    $enum,
+                    tagged,
+                    __tagged_box_enum_counter,
+                    __tagged_box_total_variants,
+                    [] $( $variant $($tt)*),*
+                );
             }
         }
     };
@@ -288,9 +535,10 @@ mod tests {
         tagged_box! {
             #[derive(Debug, Clone, PartialEq, Eq)]
             struct Container, enum Item {
-                Unit(()),
-                Something(i32),
-                ManyThings(usize, bool, isize),
+                Unit[],
+                Something[(i32)],
+                ManyThings[(usize, bool, isize)],
+                OrphanStruct[{ thing: usize, other_thing: bool }],
             }
         }
     }

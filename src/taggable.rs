@@ -59,9 +59,9 @@ mod tests {
     tagged_box! {
         #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
         struct Container, enum Item {
-            Int(usize),
-            Bool(bool),
-            Float(f32),
+            Int[(usize)],
+            Bool[(bool)],
+            Float[(f32)],
         }
     }
 

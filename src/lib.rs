@@ -105,6 +105,12 @@
 //! - `55bits`: 55 bits of reserved pointer, 9 bits for data
 //! - `56bits`: 56 bits of reserved pointer, 8 bits for data
 //! - `57bits`: 57 bits of reserved pointer, 7 bits for data
+//! - `58bits`: 58 bits of reserved pointer, 6 bits for data
+//! - `59bits`: 59 bits of reserved pointer, 5 bits for data
+//! - `60bits`: 60 bits of reserved pointer, 4 bits for data
+//! - `61bits`: 61 bits of reserved pointer, 3 bits for data
+//! - `62bits`: 62 bits of reserved pointer, 2 bits for data
+//! - `63bits`: 63 bits of reserved pointer, 1 bit for data
 //!
 //! However, only one of these may be active at a time, otherwise a `compile_error` will be emitted.
 //!
