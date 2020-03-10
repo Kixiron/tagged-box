@@ -133,15 +133,15 @@
 #[macro_export]
 macro_rules! __make_enum {
     ([[$($meta:meta),*] $vis:vis, $enum:ident] [$($finished:tt)*] $ident:ident($($ty:ty),*) $($tt:tt)*) => {
-        $crate::__make_enum!([[$($meta)*] $vis, $enum] [$($finished)* $ident($($ty),*)] $($tt)*);
+        $crate::__make_enum!([[$($meta)*] $vis, $enum] [$($finished)* $ident($($ty),*),] $($tt)*);
     };
 
     ([[$($meta:meta),*] $vis:vis, $enum:ident] [$($finished:tt)*] $ident:ident { $($var:ident: $ty:ty),* } $($tt:tt)*) => {
-        $crate::__make_enum!([[$($meta)*] $vis, $enum] [$($finished)* $ident { $($var: $ty),* }] $($tt)*);
+        $crate::__make_enum!([[$($meta)*] $vis, $enum] [$($finished)* $ident { $($var: $ty),* },] $($tt)*);
     };
 
     ([[$($meta:meta),*] $vis:vis, $enum:ident] [$($finished:tt)*] $ident:ident $($tt:tt)*) => {
-        $crate::__make_enum!([[$($meta)*] $vis, $enum] [$($finished)* $ident] $($tt)*);
+        $crate::__make_enum!([[$($meta)*] $vis, $enum] [$($finished)* $ident,] $($tt)*);
     };
 
     ([[$($meta:meta),*] $vis:vis, $enum:ident] [$($finished:tt)*]) => {
@@ -155,33 +155,27 @@ macro_rules! __make_enum {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __identify {
-    ([$($prev:tt)*] $next:ty, $($rest:tt)*) => {
-        $crate::__identify!([$( $prev )*, x] $( $rest )*)
-    };
-
-    ([$($prev:tt)*]) => {
-        $( $prev )*
-    };
-
-    (@tuple [$($prev:tt)*] $next:ty, $($rest:tt)*) => {
-        $crate::__identify!(@tuple [$( $prev )* x] $( $rest )*)
-    };
-
-    (@tuple [$($prev:tt)*]) => {
-        ($( $prev )*)
-    };
-}
-
-#[doc(hidden)]
-#[macro_export]
 macro_rules! __taggable_into_box {
+    ($self:expr, $enum:ident, $counter:ident, [$($tt:tt)*] $ident:ident ($ty:ty) $($rest:tt)* ) => {
+        $crate::__taggable_into_box!($self, $enum, $counter,
+            [
+                $($tt)*
+                $enum::$ident(var) => {
+                    $crate::TaggedBox::new(var, $counter::$ident as _)
+                },
+
+            ] $($rest)*
+        )
+    };
+
     ($self:expr, $enum:ident, $counter:ident, [$($tt:tt)*] $ident:ident ($($ty:ty),*) $($rest:tt)* ) => {
         $crate::__taggable_into_box!($self, $enum, $counter,
             [
                 $($tt)*
-                $enum::$ident($crate::__identify!([] $( $ty, )*)) =>
-                    $crate::TaggedBox::new(($crate::__identify!([] $( $ty, )*)), $counter::$ident as _),
+                $enum::$ident(tuple) => {
+                    $crate::TaggedBox::new($crate::__expand_tuple!(@paren tuple, $($ty),*), $counter::$ident as _)
+                },
+
             ] $($rest)*
         )
     };
@@ -219,16 +213,129 @@ macro_rules! __taggable_into_box {
 
 #[doc(hidden)]
 #[macro_export]
-macro_rules! __derive_from {
-    ($struct:ident, $enum:ident, $variant:ident, [($($ty:ty),*)]) => {
-        #[allow(unused_parens)]
-        impl From<($( $ty ),*)> for $struct {
-            #[inline]
-            fn from(value: ($( $ty ),*)) -> Self {
-                use $crate::TaggableInner;
-                let $crate::__identify!(@tuple [] $( $ty, )*) = value;
-                let variant = $enum::$variant($crate::__identify!([] $( $ty, )*));
+macro_rules! __expand_tuple {
+    (@paren $tuple:expr, $a:ty) => {
+        ($tuple.0,)
+    };
+    (@paren $tuple:expr, $a:ty, $b:ty) => {
+        ($tuple.0, $tuple.1)
+    };
+    (@paren $tuple:expr, $a:ty, $b:ty, $c:ty) => {
+        ($tuple.0, $tuple.1, $tuple.2)
+    };
+    (@paren $tuple:expr, $a:ty, $b:ty, $c:ty, $d:ty) => {
+        ($tuple.0, $tuple.1, $tuple.2, $tuple.3)
+    };
+    (@paren $tuple:expr, $a:ty, $b:ty, $c:ty, $d:ty, $e:ty) => {
+        ($tuple.0, $tuple.1, $tuple.2, $tuple.3, $tuple.4)
+    };
+    (@paren $tuple:expr, $a:ty, $b:ty, $c:ty, $d:ty, $e:ty, $f:ty) => {
+        ($tuple.0, $tuple.1, $tuple.2, $tuple.3, $tuple.4, $tuple.5)
+    };
+    (@paren $tuple:expr, $a:ty, $b:ty, $c:ty, $d:ty, $e:ty, $f:ty, $g:ty) => {
+        (
+            $tuple.0, $tuple.1, $tuple.2, $tuple.3, $tuple.4, $tuple.5, $tuple.6,
+        )
+    };
+    (@paren $tuple:expr, $a:ty, $b:ty, $c:ty, $d:ty, $e:ty, $f:ty, $g:ty, $h:ty) => {
+        (
+            $tuple.0, $tuple.1, $tuple.2, $tuple.3, $tuple.4, $tuple.5, $tuple.6, $tuple.7,
+        )
+    };
 
+    (@raw $variant:path, $tuple:expr, $a:ty) => {
+        $variant($tuple.0)
+    };
+    (@raw $variant:path, $tuple:expr, $a:ty, $b:ty) => {
+        $variant($tuple.0, $tuple.1)
+    };
+    (@raw $variant:path, $tuple:expr, $a:ty, $b:ty, $c:ty) => {
+        $variant($tuple.0, $tuple.1, $tuple.2)
+    };
+    (@raw $tuple:expr, $a:ty, $b:ty, $c:ty, $d:ty) => {
+        $variant($tuple.0, $tuple.1, $tuple.2, $tuple.3)
+    };
+    (@raw $variant:path, $tuple:expr, $a:ty, $b:ty, $c:ty, $d:ty, $e:ty) => {
+        $variant($tuple.0, $tuple.1, $tuple.2, $tuple.3, $tuple.4)
+    };
+    (@raw $variant:path, $tuple:expr, $a:ty, $b:ty, $c:ty, $d:ty, $e:ty, $f:ty) => {
+        $variant($tuple.0, $tuple.1, $tuple.2, $tuple.3, $tuple.4, $tuple.5)
+    };
+    (@raw $variant:path, $tuple:expr, $a:ty, $b:ty, $c:ty, $d:ty, $e:ty, $f:ty, $g:ty) => {
+        $variant(
+            $tuple.0, $tuple.1, $tuple.2, $tuple.3, $tuple.4, $tuple.5, $tuple.6,
+        )
+    };
+    (@raw $variant:path, $tuple:expr, $a:ty, $b:ty, $c:ty, $d:ty, $e:ty, $f:ty, $g:ty, $h:ty) => {
+        $variant(
+            $tuple.0, $tuple.1, $tuple.2, $tuple.3, $tuple.4, $tuple.5, $tuple.6, $tuple.7,
+        )
+    };
+}
+
+/*
+TODO: Make this work
+macro_rules! generate_tuple_expansion {
+    (@expand $($fields:literal,)*) => {
+        generate_tuple_expansion!(($) [] [$sign tuple:expr,] []
+            $( $fields, )*
+        );
+    };
+
+    (($sign:tt) [$($rest:tt)*] [$($match:tt)*] [$($access:tt)*] $field:tt, $($fields:tt,)*) => {
+        generate_tuple_expansion!(($sign) [
+                $( $rest )*
+                ($( $match, )* $sign $field:ty) => {{
+                    $( $access, )* $sign tuple.$field
+                }};
+            ]
+            [$( $match, )* $sign $field:ty]
+            [$( $access, )* $sign tuple.$field]
+            $( $fields ),*
+        );
+    };
+
+    (($sign:tt) [$($rest:tt)*] [$($match:tt)*] [$($access:tt)*]) => {
+        #[doc(hidden)]
+        #[macro_export]
+        macro_rules! __expand_tuple {
+            $( $rest )*
+        }
+    };
+}
+
+trace_macros!(true);
+generate_tuple_expansion!(
+    @expand
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+    26, 27, 28, 29, 30, 31,
+);
+trace_macros!(false);
+*/
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __derive_from {
+    ($struct:ident, $enum:ident, $variant:ident, [($ty:ty)]) => {
+        impl From<$ty> for $struct {
+            #[inline]
+            fn from(val: $ty) -> Self {
+                use $crate::TaggableInner;
+
+                Self {
+                    value: $enum::$variant(val).into_tagged_box(),
+                }
+            }
+        }
+    };
+
+    ($struct:ident, $enum:ident, $variant:ident, [($($ty:ty),*)]) => {
+        impl From<($( $ty, )*)> for $struct {
+            #[inline]
+            fn from(tuple: ($( $ty, )*)) -> Self {
+                use $crate::TaggableInner;
+
+                let variant = $crate::__expand_tuple!(@raw $enum::$variant, tuple, $($ty),*);
                 Self {
                     value: variant.into_tagged_box(),
                 }
@@ -244,62 +351,77 @@ macro_rules! __derive_from {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __ptr_read_box {
-    ($self:ident, $variant:ident, $tagged:expr, [($($ty:ty),*)]) => {
-        $self::$variant($crate::TaggedBox::into_inner::<($( $ty ),*)>($tagged).read())
+    ($enum:ident, $variant:ident, $tagged:expr, [($ty:ty)]) => {
+        $enum::$variant($crate::TaggedBox::into_inner::<$ty>($tagged).read())
     };
 
-    ($self:ident, $variant:ident, $tagged:expr, [{ $($ident:ident: $ty:ty),* }]) => {
-        $self::$variant({
+    ($enum:ident, $variant:ident, $tagged:expr, [($($ty:ty),*)]) => {{
+        let tuple = $crate::TaggedBox::into_inner::<($( $ty, )*)>($tagged).read();
+        $crate::__expand_tuple!(@raw $enum::$variant, tuple, $($ty),*)
+    }};
+
+    ($enum:ident, $variant:ident, $tagged:expr, [{ $($ident:ident: $ty:ty),* }]) => {
+        $enum::$variant({
             #[repr(C)]
             struct $variant {
                 $( $ident: $ty ),*
             }
             let $variant { $( $ident ),* } = $crate::TaggedBox::into_inner::<$variant>($tagged).read();
-            $self::$variant { $( $ident ),* }
+            $enum::$variant { $( $ident ),* }
         })
     };
 
-    ($self:ident, $variant:ident, $tagged:expr, []) => {
-        $self::$variant
+    ($enum:ident, $variant:ident, $tagged:expr, []) => {
+        $enum::$variant
     };
 }
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __boxed_into_inner {
-    ($enum:ident, $self:expr, $counter:ident, [$($tt:tt)*] $variant:ident($($ty:ty),*), $($rest:tt)*) => {
-        $crate::__boxed_into_inner!($enum, self, [
-            $($tt)*
+    ($enum:ident, $tagged:expr, $counter:ident, [$($tt:tt)*] $variant:ident($ty:ty), $($rest:tt)*) => {
+        $crate::__boxed_into_inner!($enum, $tagged, $counter, [
+            $( $tt )*
             discrim if discrim == $counter::$variant as _ => {
-                $self::$variant($crate::TaggedBox::into_inner::<($( $ty ),*)>($tagged))
+                $enum::$variant($crate::TaggedBox::into_inner::<$ty>($tagged))
             },
-        ] $($rest)*);
+        ] $( $rest )*);
     };
 
-    ($enum:ident, $self:expr, $counter:ident, [$($tt:tt)*] $variant:ident { $($ident:ident: $ty:ty),* }, $($rest:tt)*) => {
-        $crate::__boxed_into_inner!($enum, self, [
-            $($tt)*
-            discrim if discrim == $counter::$variant as _ => self::$variant({
+    ($enum:ident, $tagged:expr, $counter:ident, [$($tt:tt)*] $variant:ident($($ty:ty),*), $($rest:tt)*) => {
+        $crate::__boxed_into_inner!($enum, $tagged, $counter, [
+            $( $tt )*
+            discrim if discrim == $counter::$variant as _ => {
+                let tuple = $crate::TaggedBox::into_inner::<($( $ty, )*)>($tagged);
+                $crate::__expand_tuple!(@raw $enum::$variant, tuple, $($ty),*)
+            },
+        ] $( $rest )*);
+    };
+
+    ($enum:ident, $tagged:expr, $counter:ident, [$($tt:tt)*] $variant:ident { $($ident:ident: $ty:ty),* }, $($rest:tt)*) => {
+        $crate::__boxed_into_inner!($enum, $tagged, $counter, [
+            $( $tt )*
+            discrim if discrim == $counter::$variant as _ => $enum::$variant({
                 #[repr(C)]
                 struct $variant {
                     $( $ident: $ty ),*
                 }
                 let $variant { $( $ident ),* } = $crate::TaggedBox::into_inner::<$variant>($tagged);
-                $self::$variant { $( $ident ),* }
+                $enum::$variant { $( $ident ),* }
             }),
-        ] $($rest)*);
+        ] $( $rest )*);
     };
 
-    ($enum:ident, $self:expr, $counter:ident, [$($tt:tt)*] $variant:ident, $($rest:tt)*) => {
-        $crate::__boxed_into_inner!($enum, self, [
-            $($tt)*
-            discrim if discrim == $counter::$variant as _ => $self::$variant,
-        ] $($rest)*);
+    ($enum:ident, $tagged:expr, $counter:ident, [$($tt:tt)*] $variant:ident, $($rest:tt)*) => {
+        $crate::__boxed_into_inner!($enum, $tagged, $counter, [
+            $( $tt )*
+            discrim if discrim == $counter::$variant as _ => $enum::$variant,
+        ] $( $rest )*);
     };
 
-    ($enum:ident, $self:expr, $counter:ident, [$($tt:tt)*] ) => {
+    ($enum:ident, $tagged:expr, $counter:ident, [$($tt:tt)*]) => {
         #[allow(unused_parens)]
-        match $self.value.discriminant() {
+        match $tagged.discriminant() {
             $( $tt )*
             _ => panic!("Attempted to create an enum variant from a discriminant that doesn't exist!"),
         }
@@ -309,6 +431,21 @@ macro_rules! __boxed_into_inner {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __from_tagged_box {
+    ($tagged:expr, $enum:ident, $counter:ident, $total_variants:expr, [$($tt:tt)*] $variant:ident($ty:ty), $($rest:tt)*) => {
+        $crate::__from_tagged_box!(
+            $tagged,
+            $enum,
+            $counter,
+            $total_variants,
+            [
+                $($tt)*
+                discrim if discrim == $counter::$variant as _ => {
+                    $enum::$variant($crate::TaggedBox::into_inner::<$ty>($tagged))
+                },
+            ] $($rest)*
+        )
+    };
+
     ($tagged:expr, $enum:ident, $counter:ident, $total_variants:expr, [$($tt:tt)*] $variant:ident($($ty:ty),*), $($rest:tt)*) => {
         $crate::__from_tagged_box!(
             $tagged,
@@ -318,7 +455,8 @@ macro_rules! __from_tagged_box {
             [
                 $($tt)*
                 discrim if discrim == $counter::$variant as _ => {
-                    $self::$variant($crate::TaggedBox::into_inner::<($( $ty ),*)>($tagged))
+                    let tuple = $crate::TaggedBox::into_inner::<($( $ty ),*)>($tagged);
+                    $crate::__expand_tuple!(@raw $enum::$variant, tuple, $( $ty ),*)
                 },
             ] $($rest)*
         )
@@ -332,13 +470,13 @@ macro_rules! __from_tagged_box {
             $total_variants,
             [
                 $($tt)*
-                discrim if discrim == $counter::$variant as _ => self::$variant({
+                discrim if discrim == $counter::$variant as _ => $enum::$variant({
                     #[repr(C)]
                     struct $variant {
                         $( $ident: $ty ),*
                     }
                     let $variant { $( $ident ),* } = $crate::TaggedBox::into_inner::<$variant>($tagged);
-                    $self::$variant { $( $ident ),* }
+                    $enum::$variant { $( $ident ),* }
                 }),
             ] $($rest)*
         )
@@ -352,7 +490,7 @@ macro_rules! __from_tagged_box {
             $total_variants,
             [
                 $($tt)*
-                discrim if discrim == $counter::$variant as _ => $self::$variant,
+                discrim if discrim == $counter::$variant as _ => $enum::$variant,
             ] $($rest)*
         )
     };
@@ -378,16 +516,64 @@ macro_rules! __from_tagged_box {
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __ref_from_tagged {
-    ($enum:ident, $tagged:expr, $counter:ident, $total_variants:expr, [$($tt:tt)*] $variant:ident, $($rest:tt)*) => {
-        $crate::__from_tagged_box!(
-            $enum,
+    ($tagged:expr, $enum:ident, $counter:ident, $total_variants:expr, [$($tt:tt)*] $variant:ident($ty:ty), $($rest:tt)*) => {
+        $crate::__ref_from_tagged!(
             $tagged,
+            $enum,
             $counter,
             $total_variants,
             [
                 $($tt)*
                 discrim if discrim == $counter::$variant as _ => {
-                    let variant = $crate::__ptr_read_box!(Self, $variant, tagged, [$( $tt )*]);
+                    let variant = $crate::__ptr_read_box!($enum, $variant, $tagged, [$( $tt )*]);
+                    (callback)(&variant);
+                },
+            ] $($rest)*
+        )
+    };
+
+    ($tagged:expr, $enum:ident, $counter:ident, $total_variants:expr, [$($tt:tt)*] $variant:ident($($ty:ty),*), $($rest:tt)*) => {
+        $crate::__ref_from_tagged!(
+            $tagged,
+            $enum,
+            $counter,
+            $total_variants,
+            [
+                $($tt)*
+                discrim if discrim == $counter::$variant as _ => {
+                    let tuple = $crate::TaggedBox::into_inner::<($( $ty ),*)>($tagged);
+                    $crate::__expand_tuple!(@raw $enum::$variant, tuple, $( $ty ),*)
+                },
+            ] $($rest)*
+        )
+    };
+
+    ($tagged:expr, $enum:ident, $counter:ident, $total_variants:expr, [$($tt:tt)*] $variant:ident { $($ident:ident: $ty:ty),* }, $($rest:tt)*) => {
+        $crate::__ref_from_tagged!(
+            $tagged,
+            $enum,
+            $counter,
+            $total_variants,
+            [
+                $($tt)*
+                discrim if discrim == $counter::$variant as _ => {
+                    let variant = $crate::__ptr_read_box!($enum, $variant, $tagged, [$( $tt )*]);
+                    (callback)(&variant);
+                },
+            ] $($rest)*
+        )
+    };
+
+    ($tagged:expr, $enum:ident, $counter:ident, $total_variants:expr, [$($tt:tt)*] $variant:ident, $($rest:tt)*) => {
+        $crate::__ref_from_tagged!(
+            $tagged,
+            $enum,
+            $counter,
+            $total_variants,
+            [
+                $($tt)*
+                discrim if discrim == $counter::$variant as _ => {
+                    let variant = $crate::__ptr_read_box!($enum, $variant, $tagged, [$( $tt )*]);
                     (callback)(&variant);
                 },
             ] $($rest)*
@@ -440,7 +626,7 @@ macro_rules! tagged_box {
                 // they are macro generated. As such, when calling `into_inner` the requested type should
                 // be valid for the tagged pointer
                 unsafe {
-                    $crate::__boxed_into_inner!($enum, self, __tagged_box_enum_counter, $($variant $($tt)*)*)
+                    $crate::__boxed_into_inner!($enum, self.value, __tagged_box_enum_counter, [] $($variant $($tt)*,)*)
                 }
             }
         }
@@ -500,7 +686,7 @@ macro_rules! tagged_box {
                         Self,
                         __tagged_box_enum_counter,
                         __tagged_box_total_variants,
-                        [] $($variant $($tt)*)*
+                        [] $($variant $($tt)*),*
                     )
                 }
             }
@@ -521,7 +707,7 @@ macro_rules! tagged_box {
                     tagged,
                     __tagged_box_enum_counter,
                     __tagged_box_total_variants,
-                    [] $( $variant $($tt)*),*
+                    [] $( $variant $($tt)*,)*
                 );
             }
         }
@@ -538,7 +724,10 @@ mod tests {
                 Unit[],
                 Something[(i32)],
                 ManyThings[(usize, bool, isize)],
-                OrphanStruct[{ thing: usize, other_thing: bool }],
+                OrphanStruct [{
+                    thing: usize,
+                    other_thing: bool
+                }],
             }
         }
     }

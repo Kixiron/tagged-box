@@ -56,6 +56,7 @@ mod tests {
     use super::*;
     use crate::tagged_box;
 
+    trace_macros!(true);
     tagged_box! {
         #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
         struct Container, enum Item {
@@ -64,6 +65,7 @@ mod tests {
             Float[(f32)],
         }
     }
+    trace_macros!(false);
 
     #[test]
     fn container_into_inner() {
