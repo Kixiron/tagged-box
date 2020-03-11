@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Modified tests to cover variadic tuple, unit and orphan enum variants
 - Changed the default reserved width from 48bits to 60bits
 - Modified documentation to reflect new variant support
+- Changed reserved pointer width selection to use the environmental variable `TAGGED_BOX_RESERVED_WIDTH`
+
+### Removed
+
+- Reserved pointer width via Cargo features, now done using `build.rs` and env variables
 
 ## [0.1.1] - 2020-03-07
 

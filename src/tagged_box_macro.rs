@@ -105,7 +105,46 @@ macro_rules! __taggable_into_box {
 macro_rules! generate_tuple_arm_expansion {
     (($dollar:tt, $others:ident) $($ident:ident),*) => {
         generate_tuple_arm_expansion! {
-            @inner ($dollar, $others) [] [] [] $( $ident )*
+            @inner ($dollar, $others)
+            [
+                // ($tagged:expr, $enum:ident, $counter:ident, $variant:ident [$($finished:tt)*] [$($rest:tt)*] $($ty:ty),*) => {
+                //     $crate::__taggable_into_box!(@inner $tagged, $enum, $counter
+                //         [
+                //             $( $finished )*
+                //             $enum::$variant() => $crate::TaggedBox::dangling($counter::$variant as _),
+                //         ]
+                //         $( $rest )*
+                //     )
+                // };
+                ($dollar tagged:expr, $dollar enum:ident, $dollar counter:ident, $dollar variant:ident [$dollar ($dollar finished:tt)*] [$dollar ($dollar rest:tt)*] $dollar($dollar ty:ty),*) => {
+                    $dollar crate::__taggable_into_box!(@inner $dollar tagged, $dollar enum, $dollar counter
+                        [
+                            $dollar ( $dollar finished )*
+                            $dollar enum::$dollar variant() => $dollar crate::TaggedBox::dangling($dollar counter::$dollar variant as _),
+                        ]
+                        $dollar ( $dollar rest )*
+                    )
+                };
+                // ($tagged:expr, $enum:ident, $counter:ident, $variant:ident, [$($finished:tt)*] [$($rest:tt)*] $($ty:ty),*) => {
+                //     $crate::__taggable_into_box!(@inner $tagged, $enum, $counter
+                //         [
+                //             $( $finished )*
+                //             $enum::$variant() => $crate::TaggedBox::dangling($counter::$variant as _),
+                //         ]
+                //         $( $rest )*
+                //     )
+                // };
+                ($dollar tagged:expr, $dollar enum:ident, $dollar counter:ident, $dollar variant:ident, [$dollar ($dollar finished:tt)*] [$dollar ($dollar rest:tt)*] $dollar($dollar ty:ty),*) => {
+                    $dollar crate::__taggable_into_box!(@inner $dollar tagged, $dollar enum, $dollar counter
+                        [
+                            $dollar ( $dollar finished )*
+                            $dollar enum::$dollar variant() => $dollar crate::TaggedBox::dangling($dollar counter::$dollar variant as _),
+                        ]
+                        $dollar ( $dollar rest )*
+                    )
+                };
+            ]
+            [] [] $( $ident )*
         }
     };
 
@@ -184,15 +223,39 @@ generate_tuple_arm_expansion! {
 #[doc(hidden)]
 #[macro_export]
 macro_rules!__expand_tuple_arm {
-    ($tagged:expr,$enum:ident,$counter:ident,$variant:ident,$a:ty[$($finished:tt)*][$($rest:tt)*]$($ty:ty),*) => {
-      $crate::__taggable_into_box!(@inner$tagged,$enum,$counter[$($finished)*$enum::$variant(a) => {
-        #[repr(C)]
-        struct $variant($($ty),*);
-
-        $crate::TaggedBox::new($variant(a),$counter::$variant as _)
-      }]$($rest)*)
+    ($tagged:expr, $enum:ident, $counter:ident, $variant:ident [$($finished:tt)*] [$($rest:tt)*] $($ty:ty),*) => {
+        $crate::__taggable_into_box!(@inner $tagged, $enum, $counter
+            [
+                $($finished)*
+                $enum::$variant() => $crate::TaggedBox::dangling($counter::$variant as _),
+            ]
+            $($rest)*
+        )
     };
-    ($tagged:expr,$enum:ident,$counter:ident,$variant:ident,$a:ty,$b:ty[$($finished:tt)*][$($rest:tt)*]$($ty:ty),*) => {
+    ($tagged:expr, $enum:ident, $counter:ident, $variant:ident, [$($finished:tt)*] [$($rest:tt)*] $($ty:ty),*) => {
+        $crate::__taggable_into_box!(@inner $tagged, $enum, $counter
+            [
+                $($finished)*
+                $enum::$variant() => $crate::TaggedBox::dangling($counter::$variant as _),
+            ]
+            $($rest)*
+        )
+    };
+    ($tagged:expr, $enum:ident, $counter:ident, $variant:ident, $a:ty [$($finished:tt)*] [$($rest:tt)*] $($ty:ty),*) => {
+      $crate::__taggable_into_box!(@inner $tagged, $enum, $counter
+            [
+                $($finished)*
+                $enum::$variant(a) => {
+                    #[repr(C)]
+                    struct $variant($($ty),*);
+
+                    $crate::TaggedBox::new($variant(a), $counter::$variant as _)
+                }
+            ]
+            $($rest)*
+        )
+    };
+    ($tagged:expr,$enum:ident,$counter:ident,$variant:ident,$a:ty,$b:ty [$($finished:tt)*] [$($rest:tt)*] $($ty:ty),*) => {
       $crate::__taggable_into_box!(@inner$tagged,$enum,$counter[$($finished)*$enum::$variant(a,b) => {
         #[repr(C)]
         struct $variant($($ty),*);
@@ -445,14 +508,27 @@ macro_rules!__expand_tuple_arm {
     };
 }
 
-/*
-TODO: Currently broken from rust/#52234, as there's no way I've found to use macros generated by macros from another crate
-https://github.com/rust-lang/rust/pull/52234
-
+// TODO: Currently broken from rust/#52234, as there's no way I've found to use macros generated by macros from another crate
+// https://github.com/rust-lang/rust/pull/52234
 macro_rules! generate_tuple_expansion {
     (($dollar:tt, $others:ident) $(($field:tt, $ident:ident)),*) => {
         generate_tuple_expansion! {
-            @inner ($dollar, $others, tuple) [] [] [] $( ($field, $ident) )*
+            @inner ($dollar, $others, tuple)
+            [
+                // ($variant:path) => {
+                //     $variant()
+                // };
+                ($dollar variant:path) => {
+                    $dollar variant()
+                };
+                // ($variant:path,) => {
+                //     $variant()
+                // };
+                ($dollar variant:path,) => {
+                    $dollar variant()
+                };
+            ]
+            [] [] $( ($field, $ident) )*
         }
     };
 
@@ -461,12 +537,14 @@ macro_rules! generate_tuple_expansion {
             @inner ($dollar, $others, $tuple)
             [
                 $( $finished )*
-                // ($variant:path, $tuple:expr, <rest of accesses>, <next access = $N:ty>) => {
+                // ($variant:path, <rest of accesses>, <next access = $N:ty>) => {{
+                //      let tuple = $crate::TaggedBox::into_inner::<$variant>($tagged);
                 //      $variant(<accesses = $tuple.N>)
-                // };
-                ($dollar variant:path, $dollar $tuple:expr, $( $match )* $dollar $ident:ty) => {
+                // }};
+                ($dollar variant:path, $( $match )* $dollar $ident:ty) => {{
+                    let $tuple = $dollar crate::TaggedBox::into_inner::<$dollar variant>($dollar tagged);
                     $dollar variant($( $access )* $dollar $tuple . $field)
-                };
+                }};
             ]
             [ $( $match )* $dollar $ident:ty, ]
             [ $( $access )* $dollar $tuple . $field, ]
@@ -478,10 +556,10 @@ macro_rules! generate_tuple_expansion {
         generate_tuple_expansion! {
             @finish
             $( $finished )*
-            // ($variant:path, $tuple:expr, $($others:ty),*) => {
+            // ($variant:path, $($others:ty),*) => {
             //      compile_error!("Only enum tuple variants of up to 32 elements are supported");
             // };
-            ($dollar variant:path, $dollar $tuple:expr, $dollar ( $dollar $others:ty),*) => {
+            ($dollar variant:path, $dollar ( $dollar $others:ty),*) => {
                 compile_error!("Only enum tuple variants of up to 32 elements are supported");
             };
         }
@@ -507,13 +585,19 @@ generate_tuple_expansion! {
     (24, y), (25, z), (26, aa), (27, bb),
     (28, cc), (29, dd), (30, ee), (31, ff)
 }
-*/
 
 #[doc(hidden)]
 #[macro_export]
 macro_rules! __expand_tuple {
-    ($variant:path,$tuple:expr,$a:ty) => {
-        $variant($tuple.0)
+    ($variant:path) => {
+        $variant()
+    };
+    ($variant:path,) => {
+        $variant()
+    };
+    ($variant:path, $a:ty) => {
+        let tuple = $crate::TaggedBox::into_inner::<$variant>($tagged);
+        $variant(tuple.0)
     };
     ($variant:path,$tuple:expr,$a:ty,$b:ty) => {
         $variant($tuple.0, $tuple.1)
@@ -769,12 +853,39 @@ macro_rules! __derive_from {
 
 #[doc(hidden)]
 #[macro_export]
+macro_rules! __generate_const_sizes {
+    ($($ty:ty),*) => {{
+        $crate::__generate_const_sizes!(@inner [0] $( $ty, )*)
+    }};
+
+    (@inner [$($finished:tt)*] $ty:ty, $($rest:ty,)*) => {
+        $crate::__generate_const_sizes!(@inner
+            [
+            $( $finished )* + {
+                const __NUMBER_VAR_BITS: usize = core::mem::size_of::<$ty>() * 8;
+                __NUMBER_VAR_BITS
+            }]
+            $( $rest, )*
+        )
+    };
+
+    (@inner [$($finished:tt)*]) => {
+        $( $finished )*
+    };
+}
+
+#[doc(hidden)]
+#[macro_export]
 macro_rules! __boxed_into_inner {
     (@inner $tagged:expr, $enum:ident, $counter:ident, [$($tt:tt)*] $variant:ident($ty:ty), $($rest:tt)*) => {
         $crate::__boxed_into_inner!(@inner $tagged, $enum, $counter, [
             $( $tt )*
             discrim if discrim == $counter::$variant as _ => {
-                $enum::$variant($crate::TaggedBox::into_inner::<$ty>($tagged))
+                if $crate::__generate_const_sizes!($ty) <= $crate::discriminant::DISCRIMINANT_BITS {
+                    panic!()
+                } else {
+                    $enum::$variant($crate::TaggedBox::into_inner::<$ty>($tagged))
+                }
             },
         ] $( $rest )*);
     };
@@ -787,8 +898,11 @@ macro_rules! __boxed_into_inner {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                let tuple = $crate::TaggedBox::into_inner::<$variant>($tagged);
-                $crate::__expand_tuple!($enum::$variant, tuple, $($ty),*)
+                if $crate::__generate_const_sizes!($( $ty ),*) <= $crate::discriminant::DISCRIMINANT_BITS {
+                    panic!()
+                } else {
+                    $crate::__expand_tuple!($enum::$variant, tuple, $($ty),*)
+                }
             },
         ] $( $rest )*);
     };
@@ -1405,6 +1519,7 @@ mod tests {
             struct Container, enum Item {
                 Unit,
                 Something(i32),
+                EmptyTuple(),
                 ManyThings(usize, bool, isize),
                 OrphanStruct {
                     thing: usize,

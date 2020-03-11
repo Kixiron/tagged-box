@@ -10,22 +10,4 @@ repository = "https://github.com/Kixiron/tagged-box"
 readme = "README.md"
 keywords = ["nanbox", "tagged-pointers", "pointers", "tagged-enum"]
 categories = ["no-std", "embedded"]
-
-[features]
-default = ["60bits"]
-48bits = []
-49bits = []
-50bits = []
-51bits = []
-52bits = []
-53bits = []
-54bits = []
-55bits = []
-56bits = []
-57bits = []
-58bits = []
-59bits = []
-60bits = []
-61bits = []
-62bits = []
-63bits = []
+build = "build.rs"

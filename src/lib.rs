@@ -275,7 +275,7 @@ pub mod manually_impl_enum;
 mod taggable;
 mod tagged_box;
 #[macro_use]
-pub mod tagged_box_macro;
+mod tagged_box_macro;
 mod tagged_pointer;
 
 pub use crate::tagged_box::TaggedBox;

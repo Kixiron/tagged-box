@@ -4,6 +4,7 @@ script = ['''
 use std::{
     process::{Command, ExitStatus},
     io::{self, Write},
+    env,
 };
 
 fn main() {
@@ -17,8 +18,10 @@ fn main() {
     let mut failures = Vec::with_capacity(features.len());
     
     for feature in features {
+        env::set_var("TAGGED_BOX_RESERVED_WIDTH", feature);
+
         let output = Command::new("cargo")
-            .args(&["test", "--no-default-features", "--features", feature])
+            .arg("test")
             .output()
             .unwrap();
 
@@ -48,11 +51,14 @@ fn main() {
 ''']
 
 [tasks.miri-all]
+condition = { channels = ["nightly"] }
+install_crate = { rustup_component_name = "miri" }
 script_runner = "@rust"
 script = ['''
 use std::{
     process::{Command, ExitStatus},
     io::{self, Write},
+    env,
 };
 
 fn main() {
@@ -75,9 +81,11 @@ fn main() {
         .status()
         .unwrap();
     
-    for feature in features {
+    for feature in features {        
+        env::set_var("TAGGED_BOX_RESERVED_WIDTH", feature);
+
         let output = Command::new("cargo")
-            .args(&["miri", "test", "--no-default-features", "--features", feature])
+            .args(&["miri", "test"])
             .output()
             .unwrap();
 
