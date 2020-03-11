@@ -102,8 +102,74 @@ impl<T> TaggedBox<T> {
         }
     }
 
-    // TODO: Document new methods
-
+    /// Creates a new `TaggedBox` from a value and its discriminant, without checking invariance
+    ///
+    /// # Safety
+    ///
+    /// `discriminant` must be <= [`MAX_DISCRIMINANT`] and `pointer` must be <=
+    /// [`MAX_POINTER_VALUE`].  
+    /// See [`TaggedPointer::new_unchecked`] for more
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # extern crate alloc;
+    /// # use alloc::{vec::Vec, string::String};
+    /// # use tagged_box::TaggedBox;
+    /// # struct Paper;
+    /// #
+    /// enum Communication {
+    ///     Message(String),
+    ///     Letter(Vec<Paper>),
+    /// }
+    ///
+    /// let tagged_message: TaggedBox<Communication> = TaggedBox::new(String::from("Foobar is a timeless classic"), 0);
+    /// ```
+    ///
+    /// ## **Make sure to retrieve the correct type from the `TaggedBox`, or you will encounter undefined behavior!**  
+    ///
+    /// This is alright, because we stored a `String` onto the heap and we are retrieving a `String` with `into_inner`
+    ///
+    /// ```rust
+    /// # extern crate alloc;
+    /// # use alloc::{vec::Vec, string::String};
+    /// # use tagged_box::TaggedBox;
+    /// # struct Paper;
+    /// # enum Communication {
+    /// #     Message(String),
+    /// #     Letter(Vec<Paper>),
+    /// # }
+    /// # let tagged_message: TaggedBox<Communication> = TaggedBox::new(String::from("Foobar is a timeless classic"), 0);
+    /// #
+    /// unsafe {
+    ///     let message = TaggedBox::into_inner::<String>(tagged_message);
+    ///
+    ///     assert_eq!(&message, "Foobar is a timeless classic");
+    /// }
+    /// ```
+    ///
+    /// This is UB, because we stored a `String` onto the heap and are retreving a `Vec<Paper`
+    ///
+    /// ```should_panic
+    /// # extern crate alloc;
+    /// # use alloc::{vec::Vec, string::String};
+    /// # use tagged_box::TaggedBox;
+    /// # struct Paper;
+    /// # enum Communication {
+    /// #     Message(String),
+    /// #     Letter(Vec<Paper>),
+    /// # }
+    /// # let tagged_message: TaggedBox<Communication> = TaggedBox::new(String::from("Foobar is a timeless classic"), 0);
+    /// #
+    /// unsafe {
+    ///     let letter = TaggedBox::into_inner::<Vec<Paper>>(tagged_message); // UB!
+    /// }
+    /// # panic!("Undefined Behavior!");
+    /// ```
+    ///
+    /// [`MAX_DISCRIMINANT`]: crate::discriminant::MAX_DISCRIMINANT
+    /// [`MAX_POINTER_VALUE`]: crate::discriminant::MAX_POINTER_VALUE
+    /// [`TaggedPointer::new_unchecked`]: crate::tagged_pointer::TaggedPointer#new_unchecked
     #[inline]
     pub unsafe fn new_unchecked<U>(val: U, discriminant: Discriminant) -> Self {
         if mem::size_of::<U>() == 0 {
@@ -141,7 +207,18 @@ impl<T> TaggedBox<T> {
             _type: PhantomData,
         }
     }
-
+    /// Creates a dangling tagged box without checking for invariance, see [`NonNull::dangling`] for more information
+    ///
+    /// # Safety
+    ///
+    /// `discriminant` must be <= [`MAX_DISCRIMINANT`] and `pointer` must be <=
+    /// [`MAX_POINTER_VALUE`].  
+    /// See [`TaggedPointer::new_unchecked`] for more
+    ///
+    /// [`NonNull::dangling`]: https://doc.rust-lang.org/core/ptr/struct.NonNull.html#method.dangling
+    /// [`MAX_DISCRIMINANT`]: crate::discriminant::MAX_DISCRIMINANT
+    /// [`MAX_POINTER_VALUE`]: crate::discriminant::MAX_POINTER_VALUE
+    /// [`TaggedPointer::new_unchecked`]: crate::tagged_pointer::TaggedPointer#new_unchecked
     #[inline]
     pub unsafe fn dangling_unchecked(discriminant: Discriminant) -> Self {
         let ptr: *mut () = ptr::NonNull::dangling().as_ptr();
@@ -604,8 +681,8 @@ mod tests {
         tagged_box! {
             #[derive(Clone, Debug, PartialEq)]
             struct Container, enum Enum {
-                Usize[(usize)],
-                Str[(String)],
+                Usize(usize),
+                Str(String),
             }
         }
 
@@ -716,7 +793,6 @@ mod tests {
         assert_eq!(bool_container.into_inner(), Value::Bool(true));
     }
 
-    /*
     #[test]
     fn storage() {
         #[derive(Debug, Copy, Clone, PartialEq)]
@@ -728,21 +804,28 @@ mod tests {
         tagged_box! {
             #[derive(Debug, Clone, PartialEq)]
             struct Outer, enum Inner {
-                Float[(f32)],
-                Int[(i32)],
-                Byte[(u8)],
-                Unit[],
-                Bool[(bool)],
-                Array[([u8; 8])],
-                Vector[(Vec<u8>)],
-                CustomStruct[(CustomStruct)],
+                Float(f32),
+                Int(i32),
+                Byte(u8),
+                Unit,
+                Bool(bool),
+                Array([u8; 8]),
+                Vector(Vec<u8>),
+                CustomStruct(CustomStruct),
+                OrphanStructTrailingComma {
+                    int: i32,
+                    trailing_comma: f32,
+                },
+                OrphanStructNoTrailingComma {
+                    int: i32,
+                    no_trailing_comma: f32
+                },
             }
         }
 
         assert_eq!(Outer::from(10.0f32).into_inner(), Inner::Float(10.0));
         assert_eq!(Outer::from(100i32).into_inner(), Inner::Int(100));
         assert_eq!(Outer::from(10u8).into_inner(), Inner::Byte(10));
-        assert_eq!(Outer::from(()).into_inner(), Inner::Unit(()));
         assert_eq!(Outer::from(true).into_inner(), Inner::Bool(true));
         assert_eq!(Outer::from([100; 8]).into_inner(), Inner::Array([100; 8]));
         assert_eq!(
@@ -761,5 +844,4 @@ mod tests {
             })
         );
     }
-    */
 }

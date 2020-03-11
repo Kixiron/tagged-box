@@ -10,9 +10,7 @@ use core::fmt;
 #[derive(Copy, Clone, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[repr(transparent)]
 pub struct TaggedPointer {
-    /// The tagged pointer, the upper bits are used to store arbitrary data  
-    /// With the `48bits` feature the upper 16 bits are usable, while with the
-    /// `57bits` feature only the upper 7 bits are usable
+    /// The tagged pointer, the upper bits are used to store arbitrary data
     tagged_ptr: usize,
 }
 
@@ -36,7 +34,7 @@ impl TaggedPointer {
             MAX_DISCRIMINANT,
         );
         assert!(
-            ptr <= MAX_POINTER_VALUE, 
+            ptr <= MAX_POINTER_VALUE,
             "If you are receiving this error, then your hardware uses more than {} bits of a pointer to store addresses. \
             It is recommended that you use a different feature for the `tagged-box` crate using `features = [\"{}bits\"]` or above.
             ",
@@ -55,7 +53,7 @@ impl TaggedPointer {
     ///
     /// # Safety
     ///
-    /// `discriminant` must be <= [`MAX_DISCRIMINANT`] and `pointer` must be <= 
+    /// `discriminant` must be <= [`MAX_DISCRIMINANT`] and `pointer` must be <=
     /// [`MAX_POINTER_VALUE`]
     ///
     /// [`MAX_DISCRIMINANT`]: crate::discriminant::MAX_DISCRIMINANT
@@ -67,7 +65,9 @@ impl TaggedPointer {
         Self { tagged_ptr }
     }
 
-    /// Fetches the discriminant of the tagged pointer
+    /// Fetches the [`Discriminant`] of a tagged pointer
+    ///
+    /// [`Discriminant`]: crate::Discriminant
     #[inline]
     pub const fn discriminant(self) -> Discriminant {
         Self::fetch_discriminant(self.tagged_ptr)
@@ -130,7 +130,7 @@ impl TaggedPointer {
     /// Store a [`Discriminant`] into a tagged pointer
     ///
     /// # Panics
-    /// 
+    ///
     /// Panics if `discriminant` is greater than [`MAX_DISCRIMINANT`] or if
     /// `ptr` is greater than [`MAX_POINTER_VALUE`]
     ///
@@ -147,7 +147,7 @@ impl TaggedPointer {
             MAX_DISCRIMINANT,
         );
         assert!(
-            pointer <= MAX_POINTER_VALUE, 
+            pointer <= MAX_POINTER_VALUE,
             "If you are receiving this error, then your hardware uses more than {} bits of a pointer to store addresses. \
             It is recommended that you use a different feature for the `tagged-box` crate using `features = [\"{}bits\"]` or above.
             ",
@@ -162,7 +162,7 @@ impl TaggedPointer {
     ///
     /// # Safety
     ///
-    /// `discriminant` must be <= [`MAX_DISCRIMINANT`] and `pointer` must be <= 
+    /// `discriminant` must be <= [`MAX_DISCRIMINANT`] and `pointer` must be <=
     /// [`MAX_POINTER_VALUE`]
     ///
     /// [`Discriminant`]: crate::Discriminant

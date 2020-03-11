@@ -12,7 +12,7 @@ keywords = ["nanbox", "tagged-pointers", "pointers", "tagged-enum"]
 categories = ["no-std", "embedded"]
 
 [features]
-default = ["48bits"]
+default = ["60bits"]
 48bits = []
 49bits = []
 50bits = []

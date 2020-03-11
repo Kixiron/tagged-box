@@ -106,7 +106,7 @@
 //! }
 //! ```
 //!
-//! This is a lot of code, so we'll break it down a bit.  
+//! This is a lot of code, so we'll break it down a bit.
 //! The first piece of code generated is this struct:
 //!
 //! ```rust

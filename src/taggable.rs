@@ -56,51 +56,68 @@ mod tests {
     use super::*;
     use crate::tagged_box;
 
-    trace_macros!(true);
     tagged_box! {
         #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
         struct Container, enum Item {
-            Int[(usize)],
-            Bool[(bool)],
-            Float[(f32)],
+            SingleTuple(usize),
+            ManyTuple(usize, usize, f32, usize),
+            Unit,
+            Orphan {
+                int: u32,
+                boolean: bool,
+            },
         }
     }
-    trace_macros!(false);
 
     #[test]
     fn container_into_inner() {
         let int = Container::from(usize::max_value());
-        assert_eq!(int.into_inner(), Item::Int(usize::max_value()));
+        assert_eq!(int.into_inner(), Item::SingleTuple(usize::max_value()));
 
-        let boolean = Container::from(true);
-        assert_eq!(boolean.into_inner(), Item::Bool(true));
-
-        let float = Container::from(core::f32::MAX);
-        assert_eq!(float.into_inner(), Item::Float(core::f32::MAX));
+        let boolean = Container::from((100usize, 200usize, 50.100005, 300usize));
+        assert_eq!(
+            boolean.into_inner(),
+            Item::ManyTuple(100, 200, 50.100005, 300)
+        );
     }
 
     #[test]
     fn inner_into_tagged_box() {
         assert_eq!(
-            Item::Int(usize::max_value()),
+            Item::SingleTuple(usize::max_value()),
             Container {
-                value: Item::Int(usize::max_value()).into_tagged_box()
+                value: Item::SingleTuple(usize::max_value()).into_tagged_box()
             }
             .into_inner()
         );
 
         assert_eq!(
-            Item::Bool(false),
+            Item::ManyTuple(100, 200, 50.100005, 300),
             Container {
-                value: Item::Bool(false).into_tagged_box()
+                value: Item::ManyTuple(100, 200, 50.100005, 300).into_tagged_box()
             }
             .into_inner()
         );
 
         assert_eq!(
-            Item::Float(core::f32::MIN),
+            Item::Unit,
             Container {
-                value: Item::Float(core::f32::MIN).into_tagged_box()
+                value: Item::Unit.into_tagged_box()
+            }
+            .into_inner()
+        );
+
+        assert_eq!(
+            Item::Orphan {
+                int: 10,
+                boolean: false,
+            },
+            Container {
+                value: Item::Orphan {
+                    int: 10,
+                    boolean: false,
+                }
+                .into_tagged_box()
             }
             .into_inner()
         );
@@ -109,52 +126,95 @@ mod tests {
     #[test]
     fn inner_from_tagged_box() {
         assert_eq!(
-            Item::Int(usize::max_value()),
-            Item::from_tagged_box(Item::Int(usize::max_value()).into_tagged_box())
+            Item::SingleTuple(usize::max_value()),
+            Item::from_tagged_box(Item::SingleTuple(usize::max_value()).into_tagged_box())
         );
 
         assert_eq!(
-            Item::Bool(true),
-            Item::from_tagged_box(Item::Bool(true).into_tagged_box())
+            Item::ManyTuple(12_200, 23_300, 500.100005, 34_400),
+            Item::from_tagged_box(
+                Item::ManyTuple(12_200, 23_300, 500.100005, 34_400).into_tagged_box()
+            )
         );
 
         assert_eq!(
-            Item::Float(core::f32::MAX),
-            Item::from_tagged_box(Item::Float(core::f32::MAX).into_tagged_box())
+            Item::Unit,
+            Item::from_tagged_box(Item::Unit.into_tagged_box())
+        );
+
+        assert_eq!(
+            Item::Orphan {
+                int: 10_000,
+                boolean: true,
+            },
+            Item::from_tagged_box(
+                Item::Orphan {
+                    int: 10_000,
+                    boolean: true,
+                }
+                .into_tagged_box()
+            )
         );
     }
 
     #[test]
     fn inner_ref_from_tagged_box() {
         unsafe {
-            let int = Item::Int(usize::max_value());
-            let boolean = Item::Bool(false);
-            let float = Item::Float(core::f32::MIN);
+            let one = Item::SingleTuple(usize::max_value());
+            let many = Item::ManyTuple(1200, 233, 500.100005, 34);
+            let unit = Item::Unit;
+            let orphan = Item::Orphan {
+                int: 0,
+                boolean: false,
+            };
 
-            Item::ref_from_tagged_box(&Item::Int(usize::max_value()).into_tagged_box(), |item| {
-                assert_eq!(item, &int);
-                assert_ne!(item, &boolean);
-                assert_ne!(item, &float);
+            Item::ref_from_tagged_box(
+                &Item::SingleTuple(usize::max_value()).into_tagged_box(),
+                |item| {
+                    assert_eq!(item, &one);
+                    assert_ne!(item, &many);
+                    assert_ne!(item, &unit);
+                    assert_ne!(item, &orphan);
+                },
+            );
+
+            Item::ref_from_tagged_box(
+                &Item::ManyTuple(1200, 233, 500.100005, 34).into_tagged_box(),
+                |item| {
+                    assert_eq!(item, &many);
+                    assert_ne!(item, &one);
+                    assert_ne!(item, &unit);
+                    assert_ne!(item, &orphan);
+                },
+            );
+
+            Item::ref_from_tagged_box(&Item::Unit.into_tagged_box(), |item| {
+                assert_eq!(item, &unit);
+                assert_ne!(item, &one);
+                assert_ne!(item, &many);
+                assert_ne!(item, &orphan);
             });
 
-            Item::ref_from_tagged_box(&Item::Bool(false).into_tagged_box(), |item| {
-                assert_eq!(item, &boolean);
-                assert_ne!(item, &int);
-                assert_ne!(item, &float);
-            });
-
-            Item::ref_from_tagged_box(&Item::Float(core::f32::MIN).into_tagged_box(), |item| {
-                assert_eq!(item, &float);
-                assert_ne!(item, &int);
-                assert_ne!(item, &boolean);
-            });
+            Item::ref_from_tagged_box(
+                &Item::Orphan {
+                    int: 0,
+                    boolean: false,
+                }
+                .into_tagged_box(),
+                |item| {
+                    assert_eq!(item, &orphan);
+                    assert_ne!(item, &unit);
+                    assert_ne!(item, &one);
+                    assert_ne!(item, &many);
+                },
+            );
         }
     }
 
     #[test]
     fn wrapped_refs_from_tagged_box() {
-        let big = Item::Int(10_000).into_tagged_box();
-        let small = Item::Int(100).into_tagged_box();
+        let big = Item::SingleTuple(10_000).into_tagged_box();
+        let small = Item::SingleTuple(100).into_tagged_box();
 
         unsafe {
             Item::ref_from_tagged_box(&big, |big| {
@@ -166,7 +226,7 @@ mod tests {
             });
         }
 
-        assert_eq!(Item::from_tagged_box(big), Item::Int(10_000));
-        assert_eq!(Item::from_tagged_box(small), Item::Int(100));
+        assert_eq!(Item::from_tagged_box(big), Item::SingleTuple(10_000));
+        assert_eq!(Item::from_tagged_box(small), Item::SingleTuple(100));
     }
 }

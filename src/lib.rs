@@ -95,7 +95,7 @@
 //!
 //! This crate has a few features that change the number of free and reserved bits:
 //!
-//! - `48bits` (On by default): 48 bits of reserved pointer, 16 bits for data
+//! - `48bits`: 48 bits of reserved pointer, 16 bits for data
 //! - `49bits`: 49 bits of reserved pointer, 15 bits for data
 //! - `50bits`: 50 bits of reserved pointer, 14 bits for data
 //! - `51bits`: 51 bits of reserved pointer, 13 bits for data
@@ -107,7 +107,7 @@
 //! - `57bits`: 57 bits of reserved pointer, 7 bits for data
 //! - `58bits`: 58 bits of reserved pointer, 6 bits for data
 //! - `59bits`: 59 bits of reserved pointer, 5 bits for data
-//! - `60bits`: 60 bits of reserved pointer, 4 bits for data
+//! - `60bits` (On by default): 60 bits of reserved pointer, 4 bits for data
 //! - `61bits`: 61 bits of reserved pointer, 3 bits for data
 //! - `62bits`: 62 bits of reserved pointer, 2 bits for data
 //! - `63bits`: 63 bits of reserved pointer, 1 bit for data
@@ -260,7 +260,7 @@ pub mod manually_impl_enum;
 mod taggable;
 mod tagged_box;
 #[macro_use]
-mod tagged_box_macro;
+pub mod tagged_box_macro;
 mod tagged_pointer;
 
 pub use crate::tagged_box::TaggedBox;
