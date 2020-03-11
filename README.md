@@ -29,9 +29,13 @@ Then you can use the macro as follows
 tagged_box! {
     #[derive(Debug, Clone, PartialEq)]
     struct Container, enum Item {
-        Integer(i32),
-        Boolean(bool),
         String(String),
+        Numbers(i32, f32),
+        Nothing,
+        Struct {
+            float: f32,
+            boolean: bool,
+        },
     }
 }
 
@@ -39,8 +43,18 @@ let container = Container::from(String::from("Hello from tagged-box!"));
 
 assert_eq!(
     container.into_inner(),
-    Item::String(String::from("Hello from tagged-box!"))
+    Item::String(String::from("Hello from tagged-box!")),
 );
+
+// For tuple structs with more than 1 variant, `From<(values)>` is derived
+let container = Container::from((10i32, 10.0));
+
+assert_eq!(
+    container.into_inner(),
+    Item::Numbers(10i32, 10.0),
+);
+
+// Note: `From` is not implemented for unit and orphan struct variants
 ```
 
 For working with NaN-boxes, simply add
@@ -60,7 +74,7 @@ use tagged_box::TaggedPointer;
 This crate implements [NaN-Boxing] and [Tagged Pointers], which are a way to store extra data in the [unused bits of pointers].
 While the two differ in implementation, they are semantically the same. In this crate, the `TaggedBox` type allows you to store
 anywhere from 7 to 16 bits of arbitrary data in your pointer, depending on the [features] enabled. For explanation's sake,
-I'll be using the `48bits` feature to explain, as it's the default and leads to the cleanest examples.  
+I'll be using the `48bits` feature to explain, as it leads to the cleanest examples.  
 The pointers this applies to are 64 bits long, looking something like this
 
 ```text
