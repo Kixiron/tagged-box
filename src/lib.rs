@@ -14,7 +14,7 @@
 //! First, add the crate to your `Cargo.lock` (Note: for variable reserved widths, see the [features] section)
 //!
 //! ```toml
-//! tagged_box = "0.1.0"
+//! tagged_box = "0.1.1"
 //! ```
 //!
 //! The recommend way to use this crate is through the [`tagged_box!`] macro, as it's a safe

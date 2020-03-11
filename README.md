@@ -14,7 +14,7 @@ create NaN-boxed enums.
 First, add the crate to your `Cargo.lock` (Note: for variable reserved widths, see the [features] section)
 
 ```toml
-tagged_box = "0.1.0"
+tagged_box = "0.1.1"
 ```
 
 Next, for using the macro, add the following to the top of your file
