@@ -1,5 +1,5 @@
 fn main() {
-    if let Ok(var) = std::env::var("TAGGED_BOX_RESERVED_WIDTH") {
+    if let Ok(var) = dbg!(std::env::var("TAGGED_BOX_RESERVED_WIDTH")) {
         match &*var {
             "63bits" => println!("cargo:rustc-cfg=tagged_box_reserve_63bits"),
             "62bits" => println!("cargo:rustc-cfg=tagged_box_reserve_62bits"),
