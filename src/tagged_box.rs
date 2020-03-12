@@ -89,14 +89,14 @@ impl<T> TaggedBox<T> {
             // global allocator
             let ptr = unsafe {
                 let ptr = alloc::alloc::alloc(layout) as *mut U;
-                assert!(ptr as usize != 0);
+                assert!(ptr as u64 != 0);
                 ptr.write(val);
 
                 ptr
             };
 
             Self {
-                boxed: TaggedPointer::new(ptr as usize, discriminant),
+                boxed: TaggedPointer::new(ptr as u64, discriminant),
                 _type: PhantomData,
             }
         }
@@ -182,14 +182,14 @@ impl<T> TaggedBox<T> {
             // global allocator
             let ptr = {
                 let ptr = alloc::alloc::alloc(layout) as *mut U;
-                assert!(ptr as usize != 0);
+                assert!(ptr as u64 != 0);
                 ptr.write(val);
 
                 ptr
             };
 
             Self {
-                boxed: TaggedPointer::new_unchecked(ptr as usize, discriminant),
+                boxed: TaggedPointer::new_unchecked(ptr as u64, discriminant),
                 _type: PhantomData,
             }
         }
@@ -203,7 +203,7 @@ impl<T> TaggedBox<T> {
         let ptr: *mut () = ptr::NonNull::dangling().as_ptr();
 
         Self {
-            boxed: TaggedPointer::new(ptr as usize, discriminant),
+            boxed: TaggedPointer::new(ptr as u64, discriminant),
             _type: PhantomData,
         }
     }
@@ -224,7 +224,7 @@ impl<T> TaggedBox<T> {
         let ptr: *mut () = ptr::NonNull::dangling().as_ptr();
 
         Self {
-            boxed: TaggedPointer::new_unchecked(ptr as usize, discriminant),
+            boxed: TaggedPointer::new_unchecked(ptr as u64, discriminant),
             _type: PhantomData,
         }
     }
@@ -417,7 +417,7 @@ impl<T> TaggedBox<T> {
     #[inline]
     pub unsafe fn from_raw<U>(raw: *mut U, discriminant: Discriminant) -> Self {
         Self {
-            boxed: TaggedPointer::new(raw as usize, discriminant),
+            boxed: TaggedPointer::new(raw as u64, discriminant),
             _type: PhantomData,
         }
     }
@@ -491,12 +491,12 @@ impl<T> TaggedBox<T> {
         self.boxed.as_mut_ptr() as *mut U
     }
 
-    /// Retrieves a usize pointing to the data owned by `TaggedBox`, see [`TaggedPointer::as_usize`]
+    /// Retrieves a u64 pointing to the data owned by `TaggedBox`, see [`TaggedPointer::as_usize`]
     ///
-    /// [`TaggedPointer::as_usize`]: crate::TaggedPointer#as_usize
+    /// [`TaggedPointer::as_u64`]: crate::TaggedPointer#as_u64
     #[inline]
-    pub(crate) const fn as_usize(&self) -> usize {
-        self.boxed.as_usize()
+    pub(crate) const fn as_u64(&self) -> u64 {
+        self.boxed.as_u64()
     }
 }
 

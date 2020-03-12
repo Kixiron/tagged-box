@@ -35,7 +35,7 @@
 //! #
 //! tagged_box! {
 //!     #[derive(Debug, Clone, PartialEq)]
-//!     struct Container, enum Item {
+//!     pub struct Container, pub enum Item {
 //!         String(String),
 //!         Numbers(i32, f32),
 //!         Nothing,
@@ -177,57 +177,10 @@ extern crate alloc;
 //     tag: u8,
 // }
 // ```
-//
-// Note: Tagging of the lower bits is also possible due to alignment, but that only allows for 8 variants at best.
-// this is better than nothing though, and should be implemented
-#[cfg(target_pointer_width = "32")]
-compile_error!("Tagged 32 bit pointers are not currently supported");
 
-// Only pointer widths of 64bits and 32bits will be supported, unless 128bits ever becomes mainstream,
-// but we'll cross that bridge when we get to it.
+// Will support 128bits if they ever become mainstream, but we'll cross that bridge when we get to it.
 #[cfg(not(any(target_pointer_width = "64", target_pointer_width = "32")))]
 compile_error!("Only pointer widths of 64 and 32 will be supported");
-
-/// Macro to create a compile error if none or more than one feature are enabled
-macro_rules! generate_compile_error {
-    ($($feature:literal),+) => {
-        generate_compile_error! {
-            @combinations
-            [$( $feature ),+];
-            [];
-            $( $feature ),*
-        }
-    };
-
-    (@combinations [$($reserved:literal),*]; [$($evaled:meta),*]; $feature:literal, $($features:literal),*) => {
-        generate_compile_error! {
-            @combinations
-            [$( $reserved ),*];
-            [$( $evaled ,)* $( all(feature = $feature, feature = $features) ),*];
-            $( $features ),*
-        }
-    };
-
-    (@combinations [$($reserved:literal),*]; [$($evaled:meta),*]; $feature:literal) => {
-        generate_compile_error! {
-            @combinations
-            [$( $reserved ),*];
-            [$( $evaled ),*];
-        }
-    };
-
-    (@combinations [$($reserved:literal),*]; [$($evaled:meta),*];) => {
-        #[cfg(any(all($( feature = $reserved ),+), $( $evaled ),*))]
-        compile_error!("Please choose only one of the reserved bit width features");
-    };
-}
-
-generate_compile_error! {
-    "48bits", "49bits", "50bits",
-    "51bits", "52bits", "53bits",
-    "54bits", "55bits", "56bits",
-    "57bits"
-}
 
 /// Implement various formatting traits on included structs
 macro_rules! impl_fmt {
@@ -235,7 +188,7 @@ macro_rules! impl_fmt {
         $(
             impl fmt::$fmt for $ty {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    fmt::$fmt::fmt(&self.as_usize(), f)
+                    fmt::$fmt::fmt(&self.as_u64(), f)
                 }
             }
         )+
@@ -246,7 +199,7 @@ macro_rules! impl_fmt {
         $(
             impl<T: TaggableInner> fmt::$fmt for $ty {
                 fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-                    fmt::$fmt::fmt(&self.as_usize(), f)
+                    fmt::$fmt::fmt(&self.as_u64(), f)
                 }
             }
         )+

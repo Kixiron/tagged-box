@@ -23,6 +23,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Changed the default reserved width from 48bits to 60bits
 - Modified documentation to reflect new variant support
 - Changed reserved pointer width selection to use the environmental variable `TAGGED_BOX_RESERVED_WIDTH`
+- Started using `u64` over `usize` to more accurately reflect what's going on. Additionally, this allows the crate to compile on 32bit platforms with no modification
 
 ### Removed
 

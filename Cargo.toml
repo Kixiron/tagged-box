@@ -11,3 +11,10 @@ readme = "README.md"
 keywords = ["nanbox", "tagged-pointers", "pointers", "tagged-enum"]
 categories = ["no-std", "embedded"]
 build = "build.rs"
+
+[[bench]]
+name = "tagged_box"
+harness = false
+
+[dev-dependencies]
+criterion = "0.3.1"

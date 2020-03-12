@@ -28,7 +28,7 @@ Then you can use the macro as follows
 ```rust
 tagged_box! {
     #[derive(Debug, Clone, PartialEq)]
-    struct Container, enum Item {
+    pub struct Container, pub enum Item {
         String(String),
         Numbers(i32, f32),
         Nothing,

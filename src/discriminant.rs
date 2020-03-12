@@ -45,23 +45,23 @@ macro_rules! generate_discriminants {
 
                 doc! {
                     "The maximum allowed value of a pointer, which for the `", stringify!($feature), "` feature is `2 ^ ", $ptr_width, "`";
-                    pub const MAX_POINTER_VALUE: usize = usize::max_value() >> $free_bits;
+                    pub const MAX_POINTER_VALUE: u64 = u64::max_value() >> $free_bits;
                 }
 
                 doc! {
                     "The reserved width of a pointer, which for the `", stringify!($feature), "` feature is ", $ptr_width, " bits";
-                    pub const POINTER_WIDTH: usize = $ptr_width;
+                    pub const POINTER_WIDTH: u64 = $ptr_width;
                 }
 
                 doc! {
                     "A mask to remove the upper free bits of a tagged pointer, which for the `", stringify!($feature),
                     "` feature is `usize::MAX >> ", $free_bits, "`";
-                    pub const DISCRIMINANT_MASK: usize = usize::max_value() >> $free_bits;
+                    pub const DISCRIMINANT_MASK: u64 = u64::max_value() >> $free_bits;
                 }
 
                 doc! {
                     "The total number of bits reserved for a discriminant, which for the `", stringify!($feature), "`feature is `", $free_bits, "`";
-                    pub const DISCRIMINANT_BITS: usize = $free_bits;
+                    pub const DISCRIMINANT_BITS: u64 = $free_bits;
                 }
             }
         )*

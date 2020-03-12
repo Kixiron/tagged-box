@@ -11,7 +11,7 @@ use core::fmt;
 #[repr(transparent)]
 pub struct TaggedPointer {
     /// The tagged pointer, the upper bits are used to store arbitrary data
-    tagged_ptr: usize,
+    tagged_ptr: u64,
 }
 
 impl TaggedPointer {
@@ -26,7 +26,7 @@ impl TaggedPointer {
     /// [`MAX_POINTER_VALUE`]: crate::discriminant::MAX_POINTER_VALUE
     #[inline]
     #[allow(clippy::absurd_extreme_comparisons)]
-    pub fn new(ptr: usize, discriminant: Discriminant) -> Self {
+    pub fn new(ptr: u64, discriminant: Discriminant) -> Self {
         assert!(
             discriminant <= MAX_DISCRIMINANT,
             "Attempted to store a discriminant of {} while the max value is {}",
@@ -59,7 +59,7 @@ impl TaggedPointer {
     /// [`MAX_DISCRIMINANT`]: crate::discriminant::MAX_DISCRIMINANT
     /// [`MAX_POINTER_VALUE`]: crate::discriminant::MAX_POINTER_VALUE
     #[inline]
-    pub unsafe fn new_unchecked(ptr: usize, discriminant: Discriminant) -> Self {
+    pub unsafe fn new_unchecked(ptr: u64, discriminant: Discriminant) -> Self {
         let tagged_ptr = Self::store_discriminant_unchecked(ptr, discriminant);
 
         Self { tagged_ptr }
@@ -98,9 +98,9 @@ impl TaggedPointer {
         &mut *(Self::strip_discriminant(self.tagged_ptr) as *mut T)
     }
 
-    /// Returns the pointer as a usize, removing the discriminant
+    /// Returns the pointer as a u64, removing the discriminant
     #[inline]
-    pub const fn as_usize(self) -> usize {
+    pub const fn as_u64(self) -> u64 {
         Self::strip_discriminant(self.tagged_ptr)
     }
 
@@ -108,10 +108,10 @@ impl TaggedPointer {
     ///
     /// # Warning
     ///
-    /// Attempting to dereference this usize will not point to valid memory!
+    /// Attempting to dereference this u64 will not point to valid memory!
     ///
     #[inline]
-    pub const fn as_raw_usize(self) -> usize {
+    pub const fn as_raw_u64(self) -> u64 {
         self.tagged_ptr
     }
 
@@ -139,7 +139,7 @@ impl TaggedPointer {
     /// [`MAX_POINTER_VALUE`]: crate::discriminant::MAX_POINTER_VALUE
     #[inline]
     #[allow(clippy::absurd_extreme_comparisons)]
-    pub fn store_discriminant(pointer: usize, discriminant: Discriminant) -> usize {
+    pub fn store_discriminant(pointer: u64, discriminant: Discriminant) -> u64 {
         assert!(
             discriminant <= MAX_DISCRIMINANT,
             "Attempted to store a discriminant of {} while the max value is {}",
@@ -155,7 +155,7 @@ impl TaggedPointer {
             POINTER_WIDTH + 1,
         );
 
-        pointer | ((discriminant as usize) << POINTER_WIDTH)
+        pointer | ((discriminant as u64) << POINTER_WIDTH)
     }
 
     /// Store a [`Discriminant`] into a tagged pointer without any checks
@@ -169,11 +169,8 @@ impl TaggedPointer {
     /// [`MAX_DISCRIMINANT`]: crate::discriminant::MAX_DISCRIMINANT
     /// [`MAX_POINTER_VALUE`]: crate::discriminant::MAX_POINTER_VALUE
     #[inline]
-    pub unsafe fn store_discriminant_unchecked(
-        pointer: usize,
-        discriminant: Discriminant,
-    ) -> usize {
-        pointer | ((discriminant as usize) << POINTER_WIDTH)
+    pub unsafe fn store_discriminant_unchecked(pointer: u64, discriminant: Discriminant) -> u64 {
+        pointer | ((discriminant as u64) << POINTER_WIDTH)
     }
 
     /// Fetch a [`Discriminant`] from a tagged pointer    
@@ -181,7 +178,7 @@ impl TaggedPointer {
     /// [`Discriminant`]: crate::Discriminant
     #[inline]
     #[allow(clippy::cast_possible_truncation)]
-    pub const fn fetch_discriminant(pointer: usize) -> Discriminant {
+    pub const fn fetch_discriminant(pointer: u64) -> Discriminant {
         (pointer >> POINTER_WIDTH) as Discriminant
     }
 
@@ -189,7 +186,7 @@ impl TaggedPointer {
     ///
     /// [`Discriminant`]: crate::Discriminant
     #[inline]
-    pub const fn strip_discriminant(pointer: usize) -> usize {
+    pub const fn strip_discriminant(pointer: u64) -> u64 {
         pointer & DISCRIMINANT_MASK
     }
 }
@@ -197,7 +194,7 @@ impl TaggedPointer {
 impl fmt::Debug for TaggedPointer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("TaggedPointer")
-            .field("raw", &(self.as_raw_usize() as *const ()))
+            .field("raw", &(self.as_raw_u64() as *const ()))
             .field("ptr", &self.as_ptr::<()>())
             .field("discriminant", &self.discriminant())
             .finish()
@@ -223,7 +220,7 @@ mod tests {
     fn utility_functions() {
         let ptr = 0xF00D_BEEF;
         let discrim = discriminant::MAX_DISCRIMINANT / 2;
-        let stored = TaggedPointer::new(ptr, discrim).as_raw_usize();
+        let stored = TaggedPointer::new(ptr, discrim).as_raw_u64();
 
         assert_eq!(TaggedPointer::strip_discriminant(stored), ptr);
         assert_eq!(TaggedPointer::fetch_discriminant(stored), discrim);
@@ -233,13 +230,13 @@ mod tests {
     #[test]
     fn tagged_pointer() {
         let integer = 100i32;
-        let int_ptr = &integer as *const _ as usize;
+        let int_ptr = &integer as *const _ as u64;
         let discriminant = 10;
 
         let ptr = TaggedPointer::new(int_ptr, discriminant);
 
         assert_eq!(ptr.discriminant(), discriminant);
-        assert_eq!(ptr.as_usize(), int_ptr);
+        assert_eq!(ptr.as_u64(), int_ptr);
 
         unsafe {
             assert_eq!(ptr.as_ref::<i32>(), &integer);
@@ -254,30 +251,30 @@ mod tests {
         let tagged = TaggedPointer::new(ptr, discriminant);
 
         assert_eq!(tagged.discriminant(), discriminant);
-        assert_eq!(tagged.as_usize(), ptr);
+        assert_eq!(tagged.as_u64(), ptr);
     }
 
     #[test]
     fn min_pointer() {
-        let ptr: usize = 0;
+        let ptr: u64 = 0;
         let discriminant = discriminant::MAX_DISCRIMINANT;
 
         let tagged = TaggedPointer::new(ptr, discriminant);
 
         assert_eq!(tagged.discriminant(), discriminant);
-        assert_eq!(tagged.as_usize(), ptr);
+        assert_eq!(tagged.as_u64(), ptr);
     }
 
     #[test]
     fn max_discriminant() {
         let integer = 100usize;
-        let int_ptr = &integer as *const _ as usize;
+        let int_ptr = &integer as *const _ as u64;
         let discriminant = discriminant::MAX_DISCRIMINANT;
 
         let ptr = TaggedPointer::new(int_ptr, discriminant);
 
         assert_eq!(ptr.discriminant(), discriminant);
-        assert_eq!(ptr.as_usize(), int_ptr);
+        assert_eq!(ptr.as_u64(), int_ptr);
 
         unsafe {
             assert_eq!(ptr.as_ref::<usize>(), &integer);
@@ -287,13 +284,13 @@ mod tests {
     #[test]
     fn min_discriminant() {
         let integer = 100usize;
-        let int_ptr = &integer as *const _ as usize;
+        let int_ptr = &integer as *const _ as u64;
         let discriminant = 0;
 
         let ptr = TaggedPointer::new(int_ptr, discriminant);
 
         assert_eq!(ptr.discriminant(), discriminant);
-        assert_eq!(ptr.as_usize(), int_ptr);
+        assert_eq!(ptr.as_u64(), int_ptr);
 
         unsafe {
             assert_eq!(ptr.as_ref::<usize>(), &integer);
@@ -303,13 +300,13 @@ mod tests {
     #[test]
     fn string_pointer() {
         let string = String::from("Hello world!");
-        let str_ptr = string.as_ptr() as usize;
+        let str_ptr = string.as_ptr() as u64;
         let discriminant = discriminant::MAX_DISCRIMINANT;
 
         let ptr = TaggedPointer::new(str_ptr, discriminant);
 
         assert_eq!(ptr.discriminant(), discriminant);
-        assert_eq!(ptr.as_usize(), str_ptr);
+        assert_eq!(ptr.as_u64(), str_ptr);
 
         unsafe {
             let temp_str = slice::from_raw_parts(ptr.as_ptr::<u8>(), string.len());
