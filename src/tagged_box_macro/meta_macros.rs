@@ -330,7 +330,7 @@ macro_rules! generate_tuple_arm_expansion {
                 //     $crate::__taggable_into_box!(@inner $tagged, $enum, $counter
                 //          [
                 //              $( $finished )*
-                //              $enum::$variant() => $crate::TaggedBox::dangling($counter::$variant as _),
+                //              $enum::$variant() => $crate::TaggedBox::dangling::<$enum>($counter::$variant as u8),
                 //         ]
                 //         $( $rest )*
                 //     )
@@ -339,7 +339,7 @@ macro_rules! generate_tuple_arm_expansion {
                     $dollar crate::__taggable_into_box!(@inner $dollar tagged, $dollar enum, $dollar counter
                             [
                             $dollar ( $dollar finished )*
-                            $dollar enum::$dollar variant() => $dollar crate::TaggedBox::dangling($dollar counter::$dollar variant as _),
+                            $dollar enum::$dollar variant() => $dollar crate::TaggedBox::dangling::<$dollar enum>($dollar counter::$dollar variant as u8),
                         ]
                         $dollar ( $dollar rest )*
                 )
@@ -348,7 +348,7 @@ macro_rules! generate_tuple_arm_expansion {
                 //     $crate::__taggable_into_box!(@inner $tagged, $enum, $counter
                 //          [
                 //              $( $finished )*
-                //              $enum::$variant() => $crate::TaggedBox::<$enum>::dangling($counter::$variant as _),
+                //              $enum::$variant() => $crate::TaggedBox::<$enum>::dangling::<$enum>($counter::$variant as u8),
                 //         ]
                 //         $( $rest )*
                 //     )
@@ -357,7 +357,7 @@ macro_rules! generate_tuple_arm_expansion {
                     $dollar crate::__taggable_into_box!(@inner $dollar tagged, $dollar enum, $dollar counter
                             [
                             $dollar ( $dollar finished )*
-                            $dollar enum::$dollar variant() => $dollar crate::TaggedBox::<$dollar enum>::dangling($dollar counter::$dollar variant as _),
+                            $dollar enum::$dollar variant() => $dollar crate::TaggedBox::<$dollar enum>::dangling::<$dollar enum>($dollar counter::$dollar variant as u8),
                         ]
                         $dollar ( $dollar rest )*
                 )
@@ -380,7 +380,7 @@ macro_rules! generate_tuple_arm_expansion {
                 //                  #[repr(C)]
                 //                  struct $variant($( $ty ),*);
                 //
-                //                  $crate::TaggedBox::<$enum>::new($variant(a, b, c), $counter::$variant as _)
+                //                  $crate::TaggedBox::<$enum>::new($variant(a, b, c), $counter::$variant as u8)
                 //              }
                 //         ]
                 //         $( $rest )*
@@ -447,7 +447,7 @@ macro_rules! __expand_tuple_arm {
       $crate::__taggable_into_box!(@inner $tagged, $enum, $counter
             [
                 $( $finished )*
-                $enum::$variant() => $crate::TaggedBox::<$enum>::dangling($counter::$variant as _),
+                $enum::$variant() => $crate::TaggedBox::<$enum>::dangling::<$enum>($counter::$variant as u8),
             ]
             $( $rest )*
         )
@@ -456,7 +456,7 @@ macro_rules! __expand_tuple_arm {
       $crate::__taggable_into_box!(@inner $tagged, $enum, $counter
             [
                 $( $finished )*
-                $enum::$variant() => $crate::TaggedBox::<$enum>::dangling($counter::$variant as _),
+                $enum::$variant() => $crate::TaggedBox::<$enum>::dangling::<$enum>($counter::$variant as u8),
             ]
             $( $rest )*
         )
@@ -469,7 +469,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -483,7 +483,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -497,7 +497,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -511,7 +511,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -525,7 +525,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -539,7 +539,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -553,7 +553,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -567,7 +567,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -581,7 +581,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -595,7 +595,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -609,7 +609,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -623,7 +623,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -637,7 +637,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -651,7 +651,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -665,7 +665,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -679,7 +679,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -693,7 +693,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -707,7 +707,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -721,7 +721,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -735,7 +735,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -749,7 +749,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -763,7 +763,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -777,7 +777,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -791,7 +791,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -805,7 +805,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -819,7 +819,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -833,7 +833,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -847,7 +847,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,bb), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,bb), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -861,7 +861,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,bb,cc), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,bb,cc), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -875,7 +875,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,bb,cc,dd), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,bb,cc,dd), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -889,7 +889,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,bb,cc,dd,ee), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,bb,cc,dd,ee), $counter::$variant as u8)
             }
         ]
         $( $rest )*
@@ -903,7 +903,7 @@ macro_rules! __expand_tuple_arm {
                 #[repr(C)]
                 struct $variant($( $ty ),*);
 
-                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,bb,cc,dd,ee,ff), $counter::$variant as _)
+                $crate::TaggedBox::new::<$variant>($variant(a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p,q,r,s,t,u,v,w,x,y,z,aa,bb,cc,dd,ee,ff), $counter::$variant as u8)
             }
         ]
         $( $rest )*

@@ -27,13 +27,13 @@ impl TaggedPointer {
     #[inline]
     #[allow(clippy::absurd_extreme_comparisons)]
     pub fn new(ptr: u64, discriminant: Discriminant) -> Self {
-        assert!(
+        debug_assert!(
             discriminant <= MAX_DISCRIMINANT,
             "Attempted to store a discriminant of {} while the max value is {}",
             discriminant,
             MAX_DISCRIMINANT,
         );
-        assert!(
+        debug_assert!(
             ptr <= MAX_POINTER_VALUE,
             "If you are receiving this error, then your hardware uses more than {} bits of a pointer to store addresses. \
             It is recommended that you use a different feature for the `tagged-box` crate using `features = [\"{}bits\"]` or above.
@@ -42,27 +42,16 @@ impl TaggedPointer {
             POINTER_WIDTH + 1,
         );
 
-        // Safety: The check that discriminant <= MAX_DISCRIMINANT has already been preformed
-        let tagged_ptr = unsafe { Self::store_discriminant_unchecked(ptr, discriminant) };
+        let tagged_ptr = Self::store_discriminant(ptr, discriminant);
 
         Self { tagged_ptr }
     }
 
-    /// Create a new tagged pointer from a pointer and a discriminant without
-    /// checking invariance
-    ///
-    /// # Safety
-    ///
-    /// `discriminant` must be <= [`MAX_DISCRIMINANT`] and `pointer` must be <=
-    /// [`MAX_POINTER_VALUE`]
-    ///
-    /// [`MAX_DISCRIMINANT`]: crate::discriminant::MAX_DISCRIMINANT
-    /// [`MAX_POINTER_VALUE`]: crate::discriminant::MAX_POINTER_VALUE
     #[inline]
-    pub unsafe fn new_unchecked(ptr: u64, discriminant: Discriminant) -> Self {
-        let tagged_ptr = Self::store_discriminant_unchecked(ptr, discriminant);
-
-        Self { tagged_ptr }
+    pub const fn dangling<T: Sized>(discriminant: Discriminant) -> Self {
+        Self {
+            tagged_ptr: Self::store_discriminant(core::mem::align_of::<T>() as u64, discriminant),
+        }
     }
 
     /// Fetches the [`Discriminant`] of a tagged pointer
@@ -127,37 +116,6 @@ impl TaggedPointer {
         Self::strip_discriminant(self.tagged_ptr) as *mut T
     }
 
-    /// Store a [`Discriminant`] into a tagged pointer
-    ///
-    /// # Panics
-    ///
-    /// Panics if `discriminant` is greater than [`MAX_DISCRIMINANT`] or if
-    /// `ptr` is greater than [`MAX_POINTER_VALUE`]
-    ///
-    /// [`Discriminant`]: crate::Discriminant
-    /// [`MAX_DISCRIMINANT`]: crate::discriminant::MAX_DISCRIMINANT
-    /// [`MAX_POINTER_VALUE`]: crate::discriminant::MAX_POINTER_VALUE
-    #[inline]
-    #[allow(clippy::absurd_extreme_comparisons)]
-    pub fn store_discriminant(pointer: u64, discriminant: Discriminant) -> u64 {
-        assert!(
-            discriminant <= MAX_DISCRIMINANT,
-            "Attempted to store a discriminant of {} while the max value is {}",
-            discriminant,
-            MAX_DISCRIMINANT,
-        );
-        assert!(
-            pointer <= MAX_POINTER_VALUE,
-            "If you are receiving this error, then your hardware uses more than {} bits of a pointer to store addresses. \
-            It is recommended that you use a different feature for the `tagged-box` crate using `features = [\"{}bits\"]` or above.
-            ",
-            POINTER_WIDTH,
-            POINTER_WIDTH + 1,
-        );
-
-        pointer | ((discriminant as u64) << POINTER_WIDTH)
-    }
-
     /// Store a [`Discriminant`] into a tagged pointer without any checks
     ///
     /// # Safety
@@ -169,14 +127,13 @@ impl TaggedPointer {
     /// [`MAX_DISCRIMINANT`]: crate::discriminant::MAX_DISCRIMINANT
     /// [`MAX_POINTER_VALUE`]: crate::discriminant::MAX_POINTER_VALUE
     #[inline]
-    pub unsafe fn store_discriminant_unchecked(pointer: u64, discriminant: Discriminant) -> u64 {
+    pub const fn store_discriminant(pointer: u64, discriminant: Discriminant) -> u64 {
         pointer | ((discriminant as u64) << POINTER_WIDTH)
     }
 
     /// Fetch a [`Discriminant`] from a tagged pointer    
     ///
     /// [`Discriminant`]: crate::Discriminant
-    #[inline]
     #[allow(clippy::cast_possible_truncation)]
     pub const fn fetch_discriminant(pointer: u64) -> Discriminant {
         (pointer >> POINTER_WIDTH) as Discriminant

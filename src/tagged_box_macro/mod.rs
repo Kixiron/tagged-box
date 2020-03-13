@@ -42,7 +42,7 @@ macro_rules! __taggable_into_box {
             [
                 $( $finished )*
                 $enum::$variant(var) => {
-                    $crate::TaggedBox::<$enum>::new::<$ty>(var, $counter::$variant as _)
+                    $crate::TaggedBox::<$enum>::new::<$ty>(var, $counter::$variant as u8)
                 },
             ]
             $( $rest )*
@@ -62,7 +62,7 @@ macro_rules! __taggable_into_box {
                     struct $variant {
                         $( $member: $ty ),*
                     }
-                    $crate::TaggedBox::<$enum>::new::<$variant>($variant { $( $member ),* }, $counter::$variant as _)
+                    $crate::TaggedBox::<$enum>::new::<$variant>($variant { $( $member ),* }, $counter::$variant as u8)
                 }
             ]
             $( $rest )*
@@ -77,7 +77,7 @@ macro_rules! __taggable_into_box {
                     struct $variant {
                         $( $member: $ty ),*
                     }
-                    $crate::TaggedBox::<$enum>::new::<$variant>($variant { $( $member ),* }, $counter::$variant as _)
+                    $crate::TaggedBox::<$enum>::new::<$variant>($variant { $( $member ),* }, $counter::$variant as u8)
                 }
             ]
             $( $rest )*
@@ -88,7 +88,7 @@ macro_rules! __taggable_into_box {
         $crate::__taggable_into_box!(@inner $tagged, $enum, $counter
             [
                 $( $finished )*
-                $enum::$variant => $crate::TaggedBox::<$enum>::dangling($counter::$variant as _),
+                $enum::$variant => $crate::TaggedBox::<$enum>::dangling::<$enum>($counter::$variant as u8),
             ]
             $( $rest )*
         )
@@ -184,7 +184,7 @@ macro_rules! __boxed_into_inner {
     (@inner $tagged:expr, $enum:ident, $counter:ident, [$($tt:tt)*] $variant:ident($ty:ty), $($rest:tt)*) => {
         $crate::__boxed_into_inner!(@inner $tagged, $enum, $counter, [
             $( $tt )*
-            discrim if discrim == $counter::$variant as _ => {
+            discrim if discrim == $counter::$variant as u8 => {
                 // TODO: Inline variables
                 // if $crate::__generate_const_sizes!($ty) <= $crate::discriminant::DISCRIMINANT_BITS as usize {
                 //     todo!("Store small variables directly in the pointer")
@@ -199,7 +199,7 @@ macro_rules! __boxed_into_inner {
     (@inner $tagged:expr, $enum:ident, $counter:ident, [$($tt:tt)*] $variant:ident($($ty:ty),*), $($rest:tt)*) => {
         $crate::__boxed_into_inner!(@inner $tagged, $enum, $counter, [
             $( $tt )*
-            discrim if discrim == $counter::$variant as _ => {
+            discrim if discrim == $counter::$variant as u8 => {
                 #[allow(dead_code)]
                 #[repr(C)]
                 struct $variant($( $ty ),*);
@@ -218,7 +218,7 @@ macro_rules! __boxed_into_inner {
     (@inner $tagged:expr, $enum:ident, $counter:ident, [$($tt:tt)*] $variant:ident { $($ident:ident: $ty:ty),* }, $($rest:tt)*) => {
         $crate::__boxed_into_inner!(@inner $tagged, $enum, $counter, [
             $( $tt )*
-            discrim if discrim == $counter::$variant as _ => {
+            discrim if discrim == $counter::$variant as u8 => {
                 // TODO: Miniscule pointer storage can be preformed here too
                 #[repr(C)]
                 struct $variant {
@@ -232,7 +232,7 @@ macro_rules! __boxed_into_inner {
     (@inner $tagged:expr, $enum:ident, $counter:ident, [$($tt:tt)*] $variant:ident { $($ident:ident: $ty:ty,)* }, $($rest:tt)*) => {
         $crate::__boxed_into_inner!(@inner $tagged, $enum, $counter, [
             $( $tt )*
-            discrim if discrim == $counter::$variant as _ => {
+            discrim if discrim == $counter::$variant as u8 => {
                 // TODO: Miniscule pointer storage can be preformed here too
                 #[repr(C)]
                 struct $variant {
@@ -247,7 +247,7 @@ macro_rules! __boxed_into_inner {
     (@inner $tagged:expr, $enum:ident, $counter:ident, [$($tt:tt)*] $variant:ident, $($rest:tt)*) => {
         $crate::__boxed_into_inner!(@inner $tagged, $enum, $counter, [
             $( $tt )*
-            discrim if discrim == $counter::$variant as _ => $enum::$variant,
+            discrim if discrim == $counter::$variant as u8 => $enum::$variant,
         ] $( $rest )*);
     };
 
@@ -280,7 +280,7 @@ macro_rules! __from_tagged_box {
             $total_variants,
             [
                 $($tt)*
-                discrim if discrim == $counter::$variant as _ => {
+                discrim if discrim == $counter::$variant as u8 => {
                     $enum::$variant($crate::TaggedBox::<$enum>::into_inner::<$ty>($tagged))
                 },
             ] $($rest)*
@@ -296,7 +296,7 @@ macro_rules! __from_tagged_box {
             $total_variants,
             [
                 $($tt)*
-                discrim if discrim == $counter::$variant as _ => {
+                discrim if discrim == $counter::$variant as u8 => {
                     $crate::__expand_tuple!($enum::$variant, $crate::TaggedBox::<$enum>::into_inner::<($( $ty ),*)>($tagged), $( $ty ),*)
                 },
             ] $($rest)*
@@ -312,7 +312,7 @@ macro_rules! __from_tagged_box {
             $total_variants,
             [
                 $($tt)*
-                discrim if discrim == $counter::$variant as _ => {
+                discrim if discrim == $counter::$variant as u8 => {
                     #[repr(C)]
                     struct $variant {
                         $( $ident: $ty ),*
@@ -332,7 +332,7 @@ macro_rules! __from_tagged_box {
             $total_variants,
             [
                 $($tt)*
-                discrim if discrim == $counter::$variant as _ => {
+                discrim if discrim == $counter::$variant as u8 => {
                     #[repr(C)]
                     struct $variant {
                         $( $ident: $ty ),*
@@ -353,7 +353,7 @@ macro_rules! __from_tagged_box {
             $total_variants,
             [
                 $($tt)*
-                discrim if discrim == $counter::$variant as _ => $enum::$variant,
+                discrim if discrim == $counter::$variant as u8 => $enum::$variant,
             ] $($rest)*
         )
     };
@@ -393,7 +393,7 @@ macro_rules! __ref_from_tagged {
             $total_variants,
             [
                 $($tt)*
-                discrim if discrim == $counter::$variant as _ => {
+                discrim if discrim == $counter::$variant as u8 => {
                     let variant: core::mem::ManuallyDrop<$enum> = core::mem::ManuallyDrop::new($enum::$variant($tagged.as_ptr::<$ty>().read()));
                     ($callback)(&variant);
                 }
@@ -411,7 +411,7 @@ macro_rules! __ref_from_tagged {
             $total_variants,
             [
                 $( $tt )*
-                discrim if discrim == $counter::$variant as _ => {
+                discrim if discrim == $counter::$variant as u8 => {
                     #[repr(C)]
                     struct $variant($( $ty ),*);
 
@@ -440,7 +440,7 @@ macro_rules! __ref_from_tagged {
             $total_variants,
             [
                 $( $tt )*
-                discrim if discrim == $counter::$variant as _ => {
+                discrim if discrim == $counter::$variant as u8 => {
                     #[repr(C)]
                     struct $variant {
                         $( $ident: $ty ),*
@@ -463,7 +463,7 @@ macro_rules! __ref_from_tagged {
             $total_variants,
             [
                 $( $tt )*
-                discrim if discrim == $counter::$variant as _ => {
+                discrim if discrim == $counter::$variant as u8 => {
                     #[repr(C)]
                     struct $variant {
                         $( $ident: $ty ),*
@@ -487,7 +487,7 @@ macro_rules! __ref_from_tagged {
             $total_variants,
             [
                 $( $tt )*
-                discrim if discrim == $counter::$variant as _ => {
+                discrim if discrim == $counter::$variant as u8 => {
                     let variant: $enum = $enum::$variant;
                     ($callback)(&variant);
                 }

@@ -1,10 +1,11 @@
 use crate::{discriminant::Discriminant, taggable::TaggableInner, tagged_pointer::TaggedPointer};
+use alloc::boxed::Box;
 use core::{
     alloc::Layout,
     cmp, fmt,
     marker::PhantomData,
-    mem::{self, ManuallyDrop},
-    ptr,
+    mem::{self, ManuallyDrop, MaybeUninit},
+    ptr::NonNull,
 };
 
 /// A tagged box, associated with a variable type (enum, integer, etc.) able to be extracted from
@@ -80,13 +81,13 @@ impl<T> TaggedBox<T> {
     #[inline]
     pub fn new<U>(val: U, discriminant: Discriminant) -> Self {
         if mem::size_of::<U>() == 0 {
-            Self::dangling(discriminant)
+            Self::dangling::<U>(discriminant)
         } else {
             let layout = Layout::new::<U>();
 
             // Safety: The allocation should be properly handled by alloc + layout,
             // and writing should be properly aligned, as the pointer came from the
-            // global allocator
+            // global allocator, plus the allocated type is not a ZST
             let ptr = unsafe {
                 let ptr = alloc::alloc::alloc(layout) as *mut U;
                 assert!(ptr as u64 != 0);
@@ -173,7 +174,7 @@ impl<T> TaggedBox<T> {
     #[inline]
     pub unsafe fn new_unchecked<U>(val: U, discriminant: Discriminant) -> Self {
         if mem::size_of::<U>() == 0 {
-            Self::dangling_unchecked(discriminant)
+            Self::dangling::<U>(discriminant)
         } else {
             let layout = Layout::new::<U>();
 
@@ -189,7 +190,7 @@ impl<T> TaggedBox<T> {
             };
 
             Self {
-                boxed: TaggedPointer::new_unchecked(ptr as u64, discriminant),
+                boxed: TaggedPointer::new(ptr as u64, discriminant),
                 _type: PhantomData,
             }
         }
@@ -199,32 +200,9 @@ impl<T> TaggedBox<T> {
     ///
     /// [`NonNull::dangling`]: https://doc.rust-lang.org/core/ptr/struct.NonNull.html#method.dangling
     #[inline]
-    pub fn dangling(discriminant: Discriminant) -> Self {
-        let ptr: *mut () = ptr::NonNull::dangling().as_ptr();
-
+    pub const fn dangling<U>(discriminant: Discriminant) -> Self {
         Self {
-            boxed: TaggedPointer::new(ptr as u64, discriminant),
-            _type: PhantomData,
-        }
-    }
-    /// Creates a dangling tagged box without checking for invariance, see [`NonNull::dangling`] for more information
-    ///
-    /// # Safety
-    ///
-    /// `discriminant` must be <= [`MAX_DISCRIMINANT`] and `pointer` must be <=
-    /// [`MAX_POINTER_VALUE`].  
-    /// See [`TaggedPointer::new_unchecked`] for more
-    ///
-    /// [`NonNull::dangling`]: https://doc.rust-lang.org/core/ptr/struct.NonNull.html#method.dangling
-    /// [`MAX_DISCRIMINANT`]: crate::discriminant::MAX_DISCRIMINANT
-    /// [`MAX_POINTER_VALUE`]: crate::discriminant::MAX_POINTER_VALUE
-    /// [`TaggedPointer::new_unchecked`]: crate::tagged_pointer::TaggedPointer#new_unchecked
-    #[inline]
-    pub unsafe fn dangling_unchecked(discriminant: Discriminant) -> Self {
-        let ptr: *mut () = ptr::NonNull::dangling().as_ptr();
-
-        Self {
-            boxed: TaggedPointer::new_unchecked(ptr as u64, discriminant),
+            boxed: TaggedPointer::dangling::<U>(discriminant),
             _type: PhantomData,
         }
     }
@@ -379,6 +357,8 @@ impl<T> TaggedBox<T> {
         let raw = Self::into_raw(tagged);
         Box::from_raw(raw)
     }
+
+    // TODO: from_box
 
     /// Constructs a `TaggedBox` from a raw pointer and a discriminant.
     ///

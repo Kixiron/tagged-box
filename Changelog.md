@@ -12,8 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support for unit enum variants
 - Support for variadic tuple enum variants
 - Support for orphan struct enum variants
-- Added the `TaggedBox::dangling` and `TaggedBox::dangling_unchecked` methods
-- Added the `TaggedBox::new_unchecked` method
+- Added the `TaggedBox::dangling` method
 - Added support for more reserved pointer widths (58bits-63bits)
 
 ### Changed

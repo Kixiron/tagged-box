@@ -1,5 +1,5 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use tagged_box::{tagged_box, TaggableContainer, TaggableInner};
+use tagged_box::{tagged_box, TaggableContainer, TaggableInner, TaggedBox};
 
 tagged_box! {
     #[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
@@ -32,6 +32,12 @@ fn default_impl(c: &mut Criterion) {
             })
             .into_tagged_box()
         });
+    })
+    .bench_function("TaggedBox::new", |b| {
+        b.iter(|| TaggedBox::<[usize; 100]>::new(black_box([100usize; 100]), 0))
+    })
+    .bench_function("Box::new", |b| {
+        b.iter(|| Box::new(black_box([100usize; 100])))
     });
 }
 

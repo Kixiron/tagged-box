@@ -11,7 +11,7 @@
 //!
 //! ## Quickstart
 //!
-//! First, add the crate to your `Cargo.lock` (Note: for variable reserved widths, see the [features] section)
+//! First, add the crate to your `Cargo.lock` (Note: for variable reserved widths, see the [settings] section)
 //!
 //! ```toml
 //! tagged_box = "0.1.1"
@@ -80,7 +80,7 @@
 //!
 //! This crate implements [NaN-Boxing] and [Tagged Pointers], which are a way to store extra data in the [unused bits of pointers].
 //! While the two differ in implementation, they are semantically the same. In this crate, the [`TaggedBox`] type allows you to store
-//! anywhere from 7 to 16 bits of arbitrary data in your pointer, depending on the [features] enabled. For explanation's sake,
+//! anywhere from 7 to 16 bits of arbitrary data in your pointer, depending on the [settings] enabled. For explanation's sake,
 //! I'll be using the `48bits` feature to explain, as it leads to the cleanest examples.  
 //! The pointers this applies to are 64 bits long, looking something like this
 //!
@@ -106,9 +106,9 @@
 //! Ramping the abstraction up one more notch, we have the [`tagged_box!`] macro, which creates a container-type struct and an
 //! associated `TaggedBox`-backed enum that can be seamlessly transferred between.
 //!
-//! ## Cargo Features
+//! ## Crate Settings
 //!
-//! This crate has a few features that change the number of free and reserved bits:
+//! This crate has a few settings that change the number of free and reserved bits, this can be changed by setting `TAGGED_BOX_RESERVED_WIDTH`:
 //!
 //! - `48bits`: 48 bits of reserved pointer, 16 bits for data
 //! - `49bits`: 49 bits of reserved pointer, 15 bits for data
@@ -129,17 +129,8 @@
 //!
 //! However, only one of these may be active at a time, otherwise a `compile_error` will be emitted.
 //!
-//! To select a feature, put the following in your `Cargo.toml`
-//!
-//! ```toml
-//! [dependencies.tagged_box]
-//! version = "0.1.0"
-//! default-features = false
-//! features = ["50bits"] # Select your feature here
-//! ```
-//!
 //! [`Box`]: (https://doc.rust-lang.org/std/boxed/struct.Box.html)
-//! [features]: #cargo-features
+//! [settings]: #crate-settings
 //! [NaN-Boxing]: https://wingolog.org/archives/2011/05/18/value-representation-in-javascript-implementations
 //! [Tagged Pointers]: https://en.wikipedia.org/wiki/Tagged_pointer
 //! [unused bits of pointers]: https://en.wikipedia.org/wiki/X86-64#Virtual_address_space_details
